@@ -45,7 +45,7 @@ public class QuizManager : MonoBehaviour
         {
             QuizLists_Easy[i] = new List<MultiChoicesQuiz>();
         }
-        UnityEngine.Object[] quizArray_Easy = Resources.LoadAll("Quiz Easy");
+        UnityEngine.Object[] quizArray_Easy = Resources.LoadAll("Quiz/Easy");
         foreach (UnityEngine.Object quizObj in quizArray_Easy)
         {
             MultiChoicesQuiz quiz = (MultiChoicesQuiz)quizObj;
@@ -56,7 +56,7 @@ public class QuizManager : MonoBehaviour
         {
             QuizLists_Normal[i] = new List<MultiChoicesQuiz>();
         }
-        UnityEngine.Object[] quizArray_Normal = Resources.LoadAll("Quiz Normal");
+        UnityEngine.Object[] quizArray_Normal = Resources.LoadAll("Quiz/Normal");
         foreach (UnityEngine.Object quizObj in quizArray_Normal)
         {
             MultiChoicesQuiz quiz = (MultiChoicesQuiz)quizObj;
