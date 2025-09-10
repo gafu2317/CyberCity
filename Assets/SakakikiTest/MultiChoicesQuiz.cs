@@ -9,9 +9,9 @@ public class MultiChoicesQuiz : ScriptableObject
     [TextArea(1, 10)]
     public string Qusetion;
 
-    [Header("出題番号(1～5)")]
+    [Header("出題番号(1～7)")]
     public int Number;
 
-    [Header("選択肢\n要素0：正解\n要素1：2択・4択兼用\n要素2：4択用\n要素3：4択用")]
+    [Header("選択肢\n要素0：正解\n要素1〜3：不正解（1から優先的に使用）")]
     public string[] Choices = new string[4];
 }
