@@ -34,10 +34,39 @@ public class UIControlller : MonoBehaviour
         for (int i = 0; i < len; i++)
         {
             originalPositions[i] = targetButtons[i].anchoredPosition;
+
+            Vector2 startPos = originalPositions[i];
+
+            if (originalPositions[i].y > 0) // 上半分なら上から
+                startPos.y -= slideDistance;
+            else                            // 下半分なら下から
+                startPos.y += slideDistance;
+
+            targetButtons[i].anchoredPosition = startPos;//初期位置を変更
         }
         originalPositionQue = question.anchoredPosition;
+        Vector2 startPosQue = originalPositionQue;
+        startPosQue.y += slideDistance*2;
+        question.anchoredPosition = startPosQue;
     }
 
+    public void SlideIn()//フェードインをさせる
+    {
+        StopAllCoroutines();
+        for (int i = 0; i < targetButtons.Length; i++)
+        {
+            var buttonComp = targetButtons[i].GetComponent<Button>();
+            if (buttonComp != null)
+            {
+                buttonComp.interactable = true;
+            }
+
+            StartCoroutine(SlideAnimation(targetButtons[i], targetButtons[i].anchoredPosition, originalPositions[i], slideDuration));
+            StartCoroutine(FadeIn(targetButtons[i]));
+        }
+        StartCoroutine(SlideAnimation(question, question.anchoredPosition, originalPositionQue, slideDuration));
+        StartCoroutine(FadeIn(question));
+    }
  
     public void OnButtonClicked(RectTransform clickedButton)   //どのボタンが押されたのかを参照して、そのボタンと他のボタンで処理を分ける
     {
@@ -167,5 +196,30 @@ public class UIControlller : MonoBehaviour
         }
 
         btn.anchoredPosition = to;
+    }
+
+    private IEnumerator FadeIn(RectTransform btn)//フェードイン
+    {
+        float duration = 1.0f;//フェードの時間
+        CanvasGroup cg = btn.GetComponent<CanvasGroup>();//キャンバスグループの追加
+        if (cg == null) cg = btn.gameObject.AddComponent<CanvasGroup>();
+        cg.alpha = 0f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float ease = Mathf.Sin(t * Mathf.PI * 0.5f);
+            cg.alpha = t;
+            yield return null;
+        }
+        cg.alpha = 1f;
+    }
+
+    public void StopAnimations()//外部からのコルーチンを止めるためのメソッド
+    {
+        StopAllCoroutines();
+        Debug.Log("アニメーション停止！");
     }
 }
