@@ -36,7 +36,6 @@ public class SplineRouteCamera : MonoBehaviour
   private bool isMoving = false;
   private Vector3[] splinePoints;
   private float totalSplineLength = 0f;
-  private int splineStartOffset = 0; // 【新追加】スプライン開始オフセット
 
   void Start()
   {
@@ -50,41 +49,15 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (waypoints != null && waypoints.Length > 0)
     {
-      // 【修正】滑らかなループを維持しつつ0番目からスタート
-      splineStartOffset = FindClosestSplineIndex(waypoints[0].position);
-      Vector3 startPosition = splinePoints[splineStartOffset];
-
-      Debug.Log($"[スタート設定] WP0位置: {waypoints[0].position}");
-      Debug.Log($"[スタート設定] スプライン開始インデックス: {splineStartOffset}/{splinePoints.Length}");
-      Debug.Log($"[スタート設定] 実際の開始位置: {startPosition}");
-
-      transform.position = startPosition;
+      // 修正：常にwaypoints[0]の位置から開始
+      transform.position = waypoints[0].position;
+      Debug.Log($"[スタート設定] 開始位置: {waypoints[0].position}");
     }
 
     if (autoStart)
     {
       StartMovement();
     }
-  }
-
-  int FindClosestSplineIndex(Vector3 targetPosition)
-  {
-    if (splinePoints == null || splinePoints.Length == 0) return 0;
-
-    int closestIndex = 0;
-    float minDistance = Vector3.Distance(splinePoints[0], targetPosition);
-
-    for (int i = 1; i < splinePoints.Length; i++)
-    {
-      float distance = Vector3.Distance(splinePoints[i], targetPosition);
-      if (distance < minDistance)
-      {
-        minDistance = distance;
-        closestIndex = i;
-      }
-    }
-
-    return closestIndex;
   }
 
   void Update()
@@ -94,7 +67,7 @@ public class SplineRouteCamera : MonoBehaviour
     currentTime += Time.deltaTime;
     float normalizedTime = currentTime / totalTravelTime;
 
-    // 滑らかなループ処理
+    // ループ処理
     if (normalizedTime >= 1f)
     {
       if (loop)
@@ -118,14 +91,14 @@ public class SplineRouteCamera : MonoBehaviour
     {
       float curvedTime = speedCurve.Evaluate(normalizedTime);
       float targetDistance = curvedTime * totalSplineLength;
-      newPosition = GetSplinePositionByDistanceWithOffset(targetDistance);
-      lookDirection = GetSplineTangentByDistanceWithOffset(targetDistance);
+      newPosition = GetSplinePositionByDistance(targetDistance);
+      lookDirection = GetSplineTangentByDistance(targetDistance);
     }
     else
     {
       float curvedTime = speedCurve.Evaluate(normalizedTime);
-      newPosition = GetSplinePositionWithOffset(curvedTime);
-      lookDirection = GetSplineTangentWithOffset(curvedTime);
+      newPosition = GetSplinePosition(curvedTime);
+      lookDirection = GetSplineTangent(curvedTime);
     }
 
     transform.position = newPosition;
@@ -139,111 +112,6 @@ public class SplineRouteCamera : MonoBehaviour
     }
   }
 
-  // 【新機能】オフセットを考慮した位置取得
-  Vector3 GetSplinePositionWithOffset(float normalizedTime)
-  {
-    if (splinePoints == null || splinePoints.Length == 0) return Vector3.zero;
-
-    float exactIndex = normalizedTime * (splinePoints.Length - 1) + splineStartOffset;
-
-    // ループ時は配列範囲を超えたら巻き戻す
-    while (exactIndex >= splinePoints.Length)
-    {
-      exactIndex -= splinePoints.Length;
-    }
-    while (exactIndex < 0)
-    {
-      exactIndex += splinePoints.Length;
-    }
-
-    int index = Mathf.FloorToInt(exactIndex);
-    float fraction = exactIndex - index;
-
-    int nextIndex = (index + 1) % splinePoints.Length;
-
-    return Vector3.Lerp(splinePoints[index], splinePoints[nextIndex], fraction);
-  }
-
-  // 【新機能】オフセットを考慮した接線取得
-  Vector3 GetSplineTangentWithOffset(float normalizedTime)
-  {
-    if (splinePoints == null || splinePoints.Length < 2) return Vector3.forward;
-
-    float exactIndex = normalizedTime * (splinePoints.Length - 1) + splineStartOffset;
-
-    while (exactIndex >= splinePoints.Length)
-    {
-      exactIndex -= splinePoints.Length;
-    }
-    while (exactIndex < 0)
-    {
-      exactIndex += splinePoints.Length;
-    }
-
-    int index = Mathf.FloorToInt(exactIndex);
-    int nextIndex = (index + 1) % splinePoints.Length;
-
-    return (splinePoints[nextIndex] - splinePoints[index]).normalized;
-  }
-
-  // 【新機能】オフセット付き距離ベース位置取得
-  Vector3 GetSplinePositionByDistanceWithOffset(float targetDistance)
-  {
-    if (splinePoints == null || splinePoints.Length < 2) return Vector3.zero;
-
-    float accumulatedDistance = 0f;
-    int totalPoints = splinePoints.Length;
-
-    // スタートオフセットから開始
-    for (int i = 0; i < totalPoints; i++)
-    {
-      int currentIndex = (splineStartOffset + i) % totalPoints;
-      int nextIndex = (splineStartOffset + i + 1) % totalPoints;
-
-      float segmentDistance = Vector3.Distance(splinePoints[currentIndex], splinePoints[nextIndex]);
-
-      if (accumulatedDistance + segmentDistance >= targetDistance)
-      {
-        float remainingDistance = targetDistance - accumulatedDistance;
-        float segmentRatio = remainingDistance / segmentDistance;
-
-        return Vector3.Lerp(splinePoints[currentIndex], splinePoints[nextIndex], segmentRatio);
-      }
-
-      accumulatedDistance += segmentDistance;
-    }
-
-    return splinePoints[splineStartOffset];
-  }
-
-  // 【新機能】オフセット付き距離ベース接線取得
-  Vector3 GetSplineTangentByDistanceWithOffset(float targetDistance)
-  {
-    if (splinePoints == null || splinePoints.Length < 2) return Vector3.forward;
-
-    float accumulatedDistance = 0f;
-    int totalPoints = splinePoints.Length;
-
-    for (int i = 0; i < totalPoints; i++)
-    {
-      int currentIndex = (splineStartOffset + i) % totalPoints;
-      int nextIndex = (splineStartOffset + i + 1) % totalPoints;
-
-      float segmentDistance = Vector3.Distance(splinePoints[currentIndex], splinePoints[nextIndex]);
-
-      if (accumulatedDistance + segmentDistance >= targetDistance)
-      {
-        return (splinePoints[nextIndex] - splinePoints[currentIndex]).normalized;
-      }
-
-      accumulatedDistance += segmentDistance;
-    }
-
-    int lastCurrentIndex = (splineStartOffset + totalPoints - 2) % totalPoints;
-    int lastNextIndex = (splineStartOffset + totalPoints - 1) % totalPoints;
-    return (splinePoints[lastNextIndex] - splinePoints[lastCurrentIndex]).normalized;
-  }
-
   void GenerateSpline()
   {
     if (waypoints == null || waypoints.Length < 2)
@@ -255,7 +123,8 @@ public class SplineRouteCamera : MonoBehaviour
     Vector3[] controlPoints = PrepareControlPoints();
     List<Vector3> splinePointList = new List<Vector3>();
 
-    int segments = controlPoints.Length - 3;
+    // 修正：正確なセグメント数を計算
+    int segments = loop ? waypoints.Length : waypoints.Length - 1;
     int pointsPerSegment = Mathf.Max(4, splineResolution / segments);
 
     for (int i = 0; i < segments; i++)
@@ -274,7 +143,12 @@ public class SplineRouteCamera : MonoBehaviour
       }
     }
 
-    splinePointList.Add(controlPoints[controlPoints.Length - 2]);
+    // 修正：ループしない場合のみ最後の点を追加
+    if (!loop)
+    {
+      splinePointList.Add(waypoints[waypoints.Length - 1].position);
+    }
+
     splinePoints = splinePointList.ToArray();
     CalculateSplineLength();
 
@@ -291,34 +165,36 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (loop && waypoints.Length >= 3)
     {
-      // 滑らかなループ用の制御点配列
-      points.Add(waypoints[waypoints.Length - 2].position);
-      points.Add(waypoints[waypoints.Length - 1].position);
+      // 修正：ループ用の制御点配列をより明確に構築
+      // 前後の制御点を追加してスムーズな補間を実現
+      points.Add(waypoints[waypoints.Length - 1].position); // 最後の点を最初の制御点として
 
+      // 全てのウェイポイントを追加
       foreach (Transform waypoint in waypoints)
       {
         points.Add(waypoint.position);
       }
 
+      // ループ用に最初の2点を再度追加
       points.Add(waypoints[0].position);
       points.Add(waypoints[1].position);
     }
     else
     {
-      points.Add(waypoints[0].position);
+      // 非ループ時の処理
+      points.Add(waypoints[0].position); // 最初の点を制御点として複製
 
       foreach (Transform waypoint in waypoints)
       {
         points.Add(waypoint.position);
       }
 
-      points.Add(waypoints[waypoints.Length - 1].position);
+      points.Add(waypoints[waypoints.Length - 1].position); // 最後の点を制御点として複製
     }
 
     return points.ToArray();
   }
 
-  // 残りのメソッドは既存のまま使用
   Vector3 CatmullRomSpline(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
   {
     float t2 = t * t;
@@ -332,45 +208,69 @@ public class SplineRouteCamera : MonoBehaviour
     ) * splineTension;
   }
 
-  // 既存のメソッドは変更なし
   Vector3 GetSplinePosition(float normalizedTime)
   {
     if (splinePoints == null || splinePoints.Length == 0) return Vector3.zero;
 
-    float exactIndex = normalizedTime * (splinePoints.Length - 1);
-    int index = Mathf.FloorToInt(exactIndex);
-    float fraction = exactIndex - index;
-
-    if (index >= splinePoints.Length - 1)
+    if (loop)
     {
-      return splinePoints[splinePoints.Length - 1];
-    }
-    if (index < 0)
-    {
-      return splinePoints[0];
-    }
+      // ループ時は配列全体を使用
+      float exactIndex = normalizedTime * splinePoints.Length;
+      int index = Mathf.FloorToInt(exactIndex) % splinePoints.Length;
+      float fraction = exactIndex - Mathf.FloorToInt(exactIndex);
 
-    return Vector3.Lerp(splinePoints[index], splinePoints[index + 1], fraction);
+      int nextIndex = (index + 1) % splinePoints.Length;
+      return Vector3.Lerp(splinePoints[index], splinePoints[nextIndex], fraction);
+    }
+    else
+    {
+      // 非ループ時の処理
+      float exactIndex = normalizedTime * (splinePoints.Length - 1);
+      int index = Mathf.FloorToInt(exactIndex);
+      float fraction = exactIndex - index;
+
+      if (index >= splinePoints.Length - 1)
+      {
+        return splinePoints[splinePoints.Length - 1];
+      }
+      if (index < 0)
+      {
+        return splinePoints[0];
+      }
+
+      return Vector3.Lerp(splinePoints[index], splinePoints[index + 1], fraction);
+    }
   }
 
   Vector3 GetSplineTangent(float normalizedTime)
   {
     if (splinePoints == null || splinePoints.Length < 2) return Vector3.forward;
 
-    float exactIndex = normalizedTime * (splinePoints.Length - 1);
-    int index = Mathf.FloorToInt(exactIndex);
-
-    if (index >= splinePoints.Length - 2)
+    if (loop)
     {
-      index = splinePoints.Length - 2;
-    }
-    if (index < 0)
-    {
-      index = 0;
-    }
+      float exactIndex = normalizedTime * splinePoints.Length;
+      int index = Mathf.FloorToInt(exactIndex) % splinePoints.Length;
+      int nextIndex = (index + 1) % splinePoints.Length;
 
-    Vector3 tangent = (splinePoints[index + 1] - splinePoints[index]).normalized;
-    return tangent;
+      return (splinePoints[nextIndex] - splinePoints[index]).normalized;
+    }
+    else
+    {
+      float exactIndex = normalizedTime * (splinePoints.Length - 1);
+      int index = Mathf.FloorToInt(exactIndex);
+
+      if (index >= splinePoints.Length - 2)
+      {
+        index = splinePoints.Length - 2;
+      }
+      if (index < 0)
+      {
+        index = 0;
+      }
+
+      Vector3 tangent = (splinePoints[index + 1] - splinePoints[index]).normalized;
+      return tangent;
+    }
   }
 
   Vector3 GetSplinePositionByDistance(float targetDistance)
@@ -378,23 +278,25 @@ public class SplineRouteCamera : MonoBehaviour
     if (splinePoints == null || splinePoints.Length < 2) return Vector3.zero;
 
     float accumulatedDistance = 0f;
+    int pointCount = loop ? splinePoints.Length : splinePoints.Length - 1;
 
-    for (int i = 0; i < splinePoints.Length - 1; i++)
+    for (int i = 0; i < pointCount; i++)
     {
-      float segmentDistance = Vector3.Distance(splinePoints[i], splinePoints[i + 1]);
+      int nextIndex = loop ? (i + 1) % splinePoints.Length : i + 1;
+      float segmentDistance = Vector3.Distance(splinePoints[i], splinePoints[nextIndex]);
 
       if (accumulatedDistance + segmentDistance >= targetDistance)
       {
         float remainingDistance = targetDistance - accumulatedDistance;
         float segmentRatio = remainingDistance / segmentDistance;
 
-        return Vector3.Lerp(splinePoints[i], splinePoints[i + 1], segmentRatio);
+        return Vector3.Lerp(splinePoints[i], splinePoints[nextIndex], segmentRatio);
       }
 
       accumulatedDistance += segmentDistance;
     }
 
-    return splinePoints[splinePoints.Length - 1];
+    return loop ? splinePoints[0] : splinePoints[splinePoints.Length - 1];
   }
 
   Vector3 GetSplineTangentByDistance(float targetDistance)
@@ -402,21 +304,24 @@ public class SplineRouteCamera : MonoBehaviour
     if (splinePoints == null || splinePoints.Length < 2) return Vector3.forward;
 
     float accumulatedDistance = 0f;
+    int pointCount = loop ? splinePoints.Length : splinePoints.Length - 1;
 
-    for (int i = 0; i < splinePoints.Length - 1; i++)
+    for (int i = 0; i < pointCount; i++)
     {
-      float segmentDistance = Vector3.Distance(splinePoints[i], splinePoints[i + 1]);
+      int nextIndex = loop ? (i + 1) % splinePoints.Length : i + 1;
+      float segmentDistance = Vector3.Distance(splinePoints[i], splinePoints[nextIndex]);
 
       if (accumulatedDistance + segmentDistance >= targetDistance)
       {
-        return (splinePoints[i + 1] - splinePoints[i]).normalized;
+        return (splinePoints[nextIndex] - splinePoints[i]).normalized;
       }
 
       accumulatedDistance += segmentDistance;
     }
 
-    int lastIndex = splinePoints.Length - 2;
-    return (splinePoints[lastIndex + 1] - splinePoints[lastIndex]).normalized;
+    int lastIndex = loop ? splinePoints.Length - 1 : splinePoints.Length - 2;
+    int lastNextIndex = loop ? 0 : splinePoints.Length - 1;
+    return (splinePoints[lastNextIndex] - splinePoints[lastIndex]).normalized;
   }
 
   void HandleSplineRotation(Vector3 moveDirection, float normalizedTime)
@@ -442,9 +347,12 @@ public class SplineRouteCamera : MonoBehaviour
     totalSplineLength = 0f;
     if (splinePoints == null || splinePoints.Length < 2) return;
 
-    for (int i = 0; i < splinePoints.Length - 1; i++)
+    int pointCount = loop ? splinePoints.Length : splinePoints.Length - 1;
+
+    for (int i = 0; i < pointCount; i++)
     {
-      totalSplineLength += Vector3.Distance(splinePoints[i], splinePoints[i + 1]);
+      int nextIndex = loop ? (i + 1) % splinePoints.Length : i + 1;
+      totalSplineLength += Vector3.Distance(splinePoints[i], splinePoints[nextIndex]);
     }
 
     if (showDebugInfo)
@@ -681,9 +589,13 @@ public class SplineRouteCamera : MonoBehaviour
     if (splinePoints == null || splinePoints.Length < 2) return;
 
     Gizmos.color = new Color(1f, 0.5f, 0f, 0.8f);
-    for (int i = 0; i < splinePoints.Length - 1; i++)
+
+    int lineCount = loop ? splinePoints.Length : splinePoints.Length - 1;
+
+    for (int i = 0; i < lineCount; i++)
     {
-      Gizmos.DrawLine(splinePoints[i], splinePoints[i + 1]);
+      int nextIndex = loop ? (i + 1) % splinePoints.Length : i + 1;
+      Gizmos.DrawLine(splinePoints[i], splinePoints[nextIndex]);
     }
 
     if (showSplinePoints)
@@ -728,6 +640,13 @@ public class SplineRouteCamera : MonoBehaviour
     float normalizedTime = currentTime / totalTravelTime;
     float curvedTime = speedCurve.Evaluate(normalizedTime);
 
-    return Mathf.FloorToInt(curvedTime * (waypoints.Length - 1));
+    if (loop)
+    {
+      return Mathf.FloorToInt((curvedTime * waypoints.Length)) % waypoints.Length;
+    }
+    else
+    {
+      return Mathf.FloorToInt(curvedTime * (waypoints.Length - 1));
+    }
   }
 }
