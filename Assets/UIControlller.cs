@@ -9,7 +9,7 @@ public class UIControlller : MonoBehaviour
 {
     [Header("対象パネル")]
     [SerializeField] private RectTransform[] targetPanels;
-    [SerializeField] private int targetPanelNum;//どのパネルを選ぶか
+    [SerializeField] public int targetPanelNum;//どのパネルを選ぶか
     //[SerializeField] private RectTransform[] targetButtons;
     [Header("問題文")]
     [SerializeField] private RectTransform question; //問題文を表示するところ
@@ -26,6 +26,13 @@ public class UIControlller : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        for (int i = 0; i < targetPanels.Length; i++) 
+        {
+            if (i != targetPanelNum)
+            {
+                Destroy(targetPanels[i].gameObject);//指定したパネル以外を破棄する
+            }
+        }
         targetButtons = SetButton(targetPanels[targetPanelNum]);//指定したパネルのボタンをセット
 
         int len = targetButtons.Length;
