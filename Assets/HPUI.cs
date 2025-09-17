@@ -6,6 +6,7 @@ public class HPUI : MonoBehaviour
 {
     [SerializeField] private Image[] barriers; // 右上のバリア画像を3つセット
     [SerializeField] private Image warningPanel; // 赤い警告用のパネル
+    [SerializeField] private Image[] cracks;//ダメージを受けた時の画面のひび割れ
     private int maxHP = 3;
 
     private int currentHP;
@@ -15,6 +16,10 @@ public class HPUI : MonoBehaviour
     {
         currentHP = maxHP;
         warningPanel.color = new Color(1, 0, 0, 0); // 完全透明
+        for (int i = 0; i < cracks.Length; i++)
+        {
+            cracks[i].gameObject.SetActive(false);
+        }
         UpdateUI();
     }
 
@@ -24,6 +29,12 @@ public class HPUI : MonoBehaviour
 
         currentHP -= damage;
         currentHP = Mathf.Clamp(currentHP, 0, maxHP);
+        Debug.Log(currentHP);
+        // HP に応じてひびを表示
+        if (maxHP - currentHP-1 >= 0 && maxHP - currentHP-1 < cracks.Length)
+        {
+            cracks[maxHP - currentHP-1].gameObject.SetActive(true);
+        }
 
         // 減ったバリアをフェードアウト
         if (currentHP < barriers.Length)
