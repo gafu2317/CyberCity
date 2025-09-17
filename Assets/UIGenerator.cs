@@ -7,9 +7,8 @@ public class UIGenerator : MonoBehaviour
     public UIControlller uIControlller;
     public void ShowQuizUI(int panelNum)
     {
-        uIControlller.targetPanelNum = panelNum;//‚±‚±‚Åpanel‚Ì”Ô†‚ğæ“¾
+        uIControlller.SetTargetPanelNum(panelNum);//‚±‚±‚Åpanel‚Ì”Ô†‚ğæ“¾
         Instantiate(quizeUIPrefab, canvasTransform);
-        uIControlller.SlideIn();
         
     }
 }

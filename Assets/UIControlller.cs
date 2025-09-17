@@ -313,6 +313,10 @@ public class UIControlller : MonoBehaviour
         cg.alpha = 1f;
     }
 
+    public void SetTargetPanelNum(int panelNum)
+    {
+        targetPanelNum = panelNum;
+    }
     public void StopAnimations()//外部からのコルーチンを止めるためのメソッド
     {
         StopAllCoroutines();
