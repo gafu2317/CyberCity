@@ -63,6 +63,7 @@ public class HPUI : MonoBehaviour
         img.enabled = false;
     }
 
+
     // 赤へフェード処理
     private IEnumerator FadeToRed(Image img)
     {
