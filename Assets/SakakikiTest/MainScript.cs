@@ -11,6 +11,9 @@ public class MainScript : MonoBehaviour
     [SerializeField] private int _missLimit = 2;
     private bool _isCleared = false;
 
+    // コンポーネント参照
+    [SerializeField] private UIControlller _uiController;
+
     // 入力保持
     private int _playerAnswerNum;
     private float _resetHoldTime = 0;
@@ -38,7 +41,7 @@ public class MainScript : MonoBehaviour
         }
     }
 
-    IEnumerator MainCoroutine()
+    private IEnumerator MainCoroutine()
     {
         /* -- ゲーム開始前待機画面 -- */
 

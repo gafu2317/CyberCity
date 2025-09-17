@@ -76,16 +76,23 @@ public class QuizManager : MonoBehaviour
     /// <summary>
     /// 出題するクイズをランダムに選択し、現在のクイズ情報を更新する
     /// </summary>
-    /// <param name="number">出題番号（1～7）</param>
-    public void SetRandomQuiz(int number)
+    /// <param name="quizNumber">出題番号（1～7）</param>
+    /// <param name="choicesNum">出題時の選択肢数</param>
+    public void SetRandomQuiz(int quizNumber, int choicesNum)
     {
-        if (number < 1 || number > 7)
+        if (quizNumber < 1 || quizNumber > 7)
         {
             Debug.LogError("出題番号は1から7の範囲で指定してください。");
             return;
         }
 
-        List<MultiChoicesQuiz> selectedList = QuizDifficulty == Difficulty.Easy ? QuizLists_Easy[number - 1] : QuizLists_Normal[number - 1];
+        if (choicesNum < 2 || choicesNum > Choices.Length)
+        {
+            Debug.LogError("選択肢数が無効です。指定された選択肢数：" + choicesNum);
+            return;
+        }
+
+        List<MultiChoicesQuiz> selectedList = QuizDifficulty == Difficulty.Easy ? QuizLists_Easy[quizNumber - 1] : QuizLists_Normal[quizNumber - 1];
 
         if (selectedList.Count == 0)
         {
@@ -102,7 +109,7 @@ public class QuizManager : MonoBehaviour
 
         // 選択肢のシャッフル
         Choices = (string[])selectedQuiz.Choices.Clone();
-        for (int i = Choices.Length - 1; i > 0; i--)
+        for (int i = choicesNum - 1; i > 0; i--)
         {
             int j = UnityEngine.Random.Range(0, i + 1);
             string temp = Choices[i];
