@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System.Collections;
 
 public class AnswerUI : MonoBehaviour
 {
-    [SerializeField] private Image panelImage; // パネルのImage
+    [SerializeField] private Image panelImage;         // パネルのImage
+    [SerializeField] private TextMeshProUGUI message;  // テキスト
     [SerializeField] private float fadeDuration = 0.5f;
     [SerializeField] private float displayTime = 2.5f;
 
@@ -15,8 +17,21 @@ public class AnswerUI : MonoBehaviour
         transform.localScale = Vector3.zero;
     }
 
+    /// <summary>
+    /// 正解の表示
+    /// </summary>
     public void ShowCorrect()
     {
+        if (message != null) message.text = "正解";
+        StartCoroutine(AnimateAndDestroy());
+    }
+
+    /// <summary>
+    /// 不正解の表示
+    /// </summary>
+    public void ShowIncorrect()
+    {
+        if (message != null) message.text = "不正解";
         StartCoroutine(AnimateAndDestroy());
     }
 
@@ -58,7 +73,7 @@ public class AnswerUI : MonoBehaviour
         Destroy(gameObject); // 自動で削除
     }
 
-    // パネルの透明度を変更
+    // パネルとテキストの透明度を変更
     private void SetAlpha(float alpha)
     {
         if (panelImage != null)
@@ -66,6 +81,13 @@ public class AnswerUI : MonoBehaviour
             Color c = panelImage.color;
             c.a = alpha;
             panelImage.color = c;
+        }
+
+        if (message != null)
+        {
+            Color c = message.color;
+            c.a = alpha;
+            message.color = c;
         }
     }
 }

@@ -1784,6 +1784,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 665123084}
   m_CullTransparentMesh: 1
+--- !u!1 &671435589
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 671435591}
+  - component: {fileID: 671435590}
+  m_Layer: 0
+  m_Name: AnswerUIManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &671435590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 671435589}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7849654417c1d54294c4797fa8b35db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  correctUIPrefab: {fileID: 6724442736970615198, guid: ae8bf22870fdf854c9e08d3ed45ea878,
+    type: 3}
+  canvasTransform: {fileID: 751092226}
+--- !u!4 &671435591
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 671435589}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 994.70703, y: 569.02515, z: 78.52637}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &714743894
 GameObject:
   m_ObjectHideFlags: 0
@@ -3849,17 +3896,17 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1605269207}
-        m_TargetAssemblyTypeName: UIControlller, Assembly-CSharp
-        m_MethodName: SlideIn
-        m_Mode: 1
+      - m_Target: {fileID: 671435590}
+        m_TargetAssemblyTypeName: AnswerUIManager, Assembly-CSharp
+        m_MethodName: ShowAnswerUI
+        m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 1740609475}
         m_TargetAssemblyTypeName: HPUI, Assembly-CSharp
@@ -4523,7 +4570,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1618414166
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4825,7 +4872,7 @@ MonoBehaviour:
   - {fileID: 741021468}
   - {fileID: 1852592980}
   - {fileID: 1231448091}
-  warningPanel: {fileID: 1618414167}
+  warningPanel: {fileID: 0}
 --- !u!4 &1740609476
 Transform:
   m_ObjectHideFlags: 0
@@ -5961,3 +6008,4 @@ SceneRoots:
   - {fileID: 1423709701}
   - {fileID: 1605269208}
   - {fileID: 1740609476}
+  - {fileID: 671435591}
