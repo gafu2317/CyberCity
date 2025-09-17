@@ -38,6 +38,12 @@ public class MainScript : MonoBehaviour
         {
             // シーンを再ロードすることによるリセット
             ResetCurrentScene();
+
+            // 自身のコルーチンも再起動
+            StopAllCoroutines();
+            StartCoroutine(MainCoroutine());
+
+            _resetHoldTime = 0;
         }
     }
 
@@ -56,11 +62,13 @@ public class MainScript : MonoBehaviour
             {
                 _finalQuizNum = 5;
                 QuizManager.Instance.SetDifficulty(QuizManager.Difficulty.Easy);
+                Debug.Log("イージーモード");
             }
             if (Input.GetKeyDown(KeyCode.N))
             {
                 _finalQuizNum = 7;
                 QuizManager.Instance.SetDifficulty(QuizManager.Difficulty.Normal);
+                Debug.Log("ノーマルモード");
             }
 
             yield return null;
@@ -126,6 +134,9 @@ public class MainScript : MonoBehaviour
                 yield return null;
             }
 
+            // 回答選択アニメーションの呼び出しと待機
+            yield return StartCoroutine(_uiController.AnswerSelectCoroutine(_playerAnswerNum));
+
             /* 処理：カウントダウンアニメーションの強制終了 */
 
             // 正誤判定
@@ -152,14 +163,16 @@ public class MainScript : MonoBehaviour
 
         /* -- リザルト演出 -- */
 
-        // _quizNum の値からゲームクリアかどうかを判定
+        // フラグからゲームクリアかどうかを判定
         if (_isCleared)
         {
             /* 処理：ゲームクリアアニメーションを開始 */
+            Debug.Log("ゲームクリア");
         }
         else
         {
             /* 処理：ゲームオーバーアニメーションを開始 */
+            Debug.Log("ゲームオーバー");
         }
 
 

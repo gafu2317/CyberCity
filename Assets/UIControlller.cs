@@ -61,6 +61,9 @@ public class UIControlller : MonoBehaviour
 
             targetButtons[i].anchoredPosition = startPos;//初期位置を変更
 
+            // スケールをリセット
+            targetButtons[i].transform.parent.localScale = Vector3.one;
+
             // ボタンを有効化
             var buttonComp = targetButtons[i].GetComponent<Button>();
             if (buttonComp != null)
@@ -107,7 +110,7 @@ public class UIControlller : MonoBehaviour
         {
             questionTextComp.text = questionText;
         }
-        
+
         // 選択肢の設定
         int len = Math.Min(choicesTexts.Length, targetButtons.Length);
         for (int i = 0; i < len; i++)
@@ -166,7 +169,6 @@ public class UIControlller : MonoBehaviour
     /// <summary>
     /// ボタンが押されたときの処理
     /// どのボタンが押されたのかを参照して、そのボタンと他のボタンで処理を分ける
-    /// キーボード入力の場合もこれを呼び出す
     /// </summary>
     public void OnButtonClicked(RectTransform clickedButton)
     {
@@ -209,6 +211,52 @@ public class UIControlller : MonoBehaviour
     }
 
     /// <summary>
+    /// キーボード入力による選択肢入力の処理
+    /// </summary>
+    public IEnumerator AnswerSelectCoroutine(int choiceNum)
+    {
+        // 各ボタンにつき 1 本（押されたボタン：SlideAndScaleToCenter、他は SlideAnimation）
+        // ＋ question の SlideAnimation が 1 本
+        int remaining = targetButtons.Length + 1;
+
+        // 各ボタンの処理開始
+        for (int i = 0; i < targetButtons.Length; i++)
+        {
+            RectTransform btn = targetButtons[i];
+
+            if (i == choiceNum - 1)
+            {
+                // 押されたボタン：中央にスライドして拡大（IEnumerator を想定）
+                StartCoroutine(RunAndSignal(SlideAndScaleToCenter(btn), () => remaining--));
+            }
+            else
+            {
+                // 他のボタン：元の位置から画面外へスライド
+                Vector2 targetPos = originalPositions[i];
+                if (originalPositions[i].y > 0) targetPos.y -= slideDistance;
+                else targetPos.y += slideDistance;
+
+                StartCoroutine(RunAndSignal(SlideAnimation(btn, btn.anchoredPosition, targetPos, slideDuration),
+                    () => remaining--));
+            }
+
+            // 押されたボタンの interactable 等を切る／設定したい場合ここで行う
+            var btnComp = btn.GetComponent<Button>();
+            if (btnComp != null) btnComp.interactable = false;
+        }
+
+        // 問題文（question）を移動 — 元コードはループ内で何度も呼んでいたが、
+        // 多重起動は不要と判断してここで1回だけ実行するよう整理
+        Vector2 targetPosQuestion = originalPositionQue;
+        targetPosQuestion.y = slideDistance * 2; // 移動距離を上げる
+        StartCoroutine(RunAndSignal(SlideAnimation(question, question.anchoredPosition, targetPosQuestion, slideDuration * 1.5f),
+            () => remaining--));
+
+        // 全て終わるまで待機
+        yield return new WaitUntil(() => remaining <= 0);
+    }
+
+    /// <summary>
     /// 押されたボタンを中央にスライドし、サイズを拡大
     /// </summary>
     private IEnumerator SlideAndScaleToCenter(RectTransform btn)
@@ -217,9 +265,6 @@ public class UIControlller : MonoBehaviour
         // Layout Group を一時無効化
         var layoutGroup = btn.parent.GetComponent<LayoutGroup>();
         if (layoutGroup != null) layoutGroup.enabled = false;
-
-        // 中央にスライド + 同時にサイズ拡大
-        Vector2 startPos = btn.anchoredPosition;
 
         //画面の中心座標
         Vector3 screenCenter = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
@@ -231,8 +276,6 @@ public class UIControlller : MonoBehaviour
         Vector3 startWorldPos = btn.position;
         Vector3 endWorldPos = worldCenter;
         endWorldPos.y += 50;//少しだけ中心より上へ移動 
-
-        Vector2 endPos = Vector2.zero;
 
         float elapsed = 0f;
 
