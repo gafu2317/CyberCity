@@ -1,83 +1,176 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using TMPro;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System;
+using TMPro;
 
 public class UIControlller : MonoBehaviour
 {
-    [Header("‘ÎÛƒpƒlƒ‹")]
+    [Header("å¯¾è±¡ãƒ‘ãƒãƒ«")]
     [SerializeField] private RectTransform[] targetPanels;
-    [SerializeField] public int targetPanelNum;//‚Ç‚Ìƒpƒlƒ‹‚ğ‘I‚Ô‚©
+    [SerializeField] private int targetPanelNum;//ã©ã®ãƒ‘ãƒãƒ«ã‚’é¸ã¶ã‹
     //[SerializeField] private RectTransform[] targetButtons;
-    [Header("–â‘è•¶")]
-    [SerializeField] private RectTransform question; //–â‘è•¶‚ğ•\¦‚·‚é‚Æ‚±‚ë
+    [Header("å•é¡Œæ–‡")]
+    [SerializeField] private RectTransform question; //å•é¡Œæ–‡ã‚’è¡¨ç¤ºã™ã‚‹ã¨ã“ã‚
 
-    [Header("ƒAƒjƒ[ƒVƒ‡ƒ“İ’è")]
-    [SerializeField] private float slideDuration = 0.5f;       // ƒXƒ‰ƒCƒhŠÔ
-    [SerializeField] private Vector3 targetScale = new Vector3(2f, 2f, 1f); // ÅI“I‚ÈŠg‘å”{—¦
-    [SerializeField] private float slideDistance = 1000f;       // ƒXƒ‰ƒCƒhƒAƒEƒg‹——£
-    [SerializeField] float fadeDuration = 3.0f;     //ƒtƒF[ƒhƒAƒEƒg‚ÌŠÔ
+    [Header("ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³è¨­å®š")]
+    [SerializeField] private float slideDuration = 0.5f;       // ã‚¹ãƒ©ã‚¤ãƒ‰æ™‚é–“
+    [SerializeField] private Vector3 targetScale = new Vector3(2f, 2f, 1f); // æœ€çµ‚çš„ãªæ‹¡å¤§å€ç‡
+    [SerializeField] private float slideDistance = 1000f;       // ã‚¹ãƒ©ã‚¤ãƒ‰ã‚¢ã‚¦ãƒˆè·é›¢
+    [SerializeField] float fadeDuration = 3.0f;     //ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¢ã‚¦ãƒˆã®æ™‚é–“
 
-    private RectTransform[] targetButtons;//QÆ‚·‚éƒ{ƒ^ƒ“‚Ì”z—ñ
-    private Vector2[] originalPositions;//ƒ{ƒ^ƒ“‚ÌŒ³‚ÌˆÊ’u
-    private Vector2 originalPositionQue; //–â‘è•¶‚ÌŒ³‚ÌˆÊ’u
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private RectTransform[] targetButtons;//å‚ç…§ã™ã‚‹ãƒœã‚¿ãƒ³ã®é…åˆ—
+    private Vector2[] originalPositions;//ãƒœã‚¿ãƒ³ã®å…ƒã®ä½ç½®
+    private Vector2 originalPositionQue; //å•é¡Œæ–‡ã®å…ƒã®ä½ç½®
+    
+    private void Start()
     {
-        for (int i = 0; i < targetPanels.Length; i++) 
-        {
-            if (i != targetPanelNum)
-            {
-                Destroy(targetPanels[i].gameObject);//w’è‚µ‚½ƒpƒlƒ‹ˆÈŠO‚ğ”jŠü‚·‚é
-            }
-        }
-        targetButtons = SetButton(targetPanels[targetPanelNum]);//w’è‚µ‚½ƒpƒlƒ‹‚Ìƒ{ƒ^ƒ“‚ğƒZƒbƒg
+        // ãƒœã‚¿ãƒ³ã®å…ƒã®ä½ç½®ã‚’ä¿å­˜ã™ã‚‹é…åˆ—ã‚’åˆæœŸåŒ–
+        // é¸æŠè‚¢ã®æœ€å¤§æ•°ãŒ4ãªã®ã§4ã«å›ºå®šï¼ˆå°†æ¥çš„ã«å¤‰æ›´ã™ã‚‹å ´åˆã¯è¦ä¿®æ­£ï¼‰
+        originalPositions = new Vector2[4];
 
+        // ãƒ‘ãƒãƒ«ãƒœã‚¿ãƒ³ã®åˆæœŸåŒ–ï¼ˆãƒ‡ãƒãƒƒã‚°ç”¨ï¼‰
+        targetButtons = SetButton(targetPanels[targetPanelNum]); // æŒ‡å®šã—ãŸãƒ‘ãƒãƒ«ã®ãƒœã‚¿ãƒ³ã‚’ã‚»ãƒƒãƒˆ
+        targetPanels[targetPanelNum].gameObject.SetActive(true); // ãƒ‘ãƒãƒ«è‡ªä½“ã®æœ‰åŠ¹åŒ–
+        InitializeButtons();
+
+        // å•é¡Œæ–‡ã®åˆæœŸä½ç½®ã‚’è¨­å®š
+        originalPositionQue = question.anchoredPosition;
+        Vector2 startPosQue = originalPositionQue;
+        startPosQue.y += slideDistance * 2;
+        question.anchoredPosition = startPosQue;
+    }
+
+    /// <summary>
+    /// ä½¿ç”¨ã™ã‚‹ãƒ‘ãƒãƒ«ã®ãƒœã‚¿ãƒ³ã®åˆæœŸåŒ–ã‚’è¡Œã†
+    /// </summary>
+    private void InitializeButtons()
+    {
         int len = targetButtons.Length;
-        originalPositions = new Vector2[len];
-
         for (int i = 0; i < len; i++)
         {
             originalPositions[i] = targetButtons[i].anchoredPosition;
 
             Vector2 startPos = originalPositions[i];
 
-            if (originalPositions[i].y > 0) // ã”¼•ª‚È‚çã‚©‚ç
+            if (originalPositions[i].y > 0) // ä¸ŠåŠåˆ†ãªã‚‰ä¸Šã‹ã‚‰
                 startPos.y -= slideDistance;
-            else                            // ‰º”¼•ª‚È‚ç‰º‚©‚ç
+            else                            // ä¸‹åŠåˆ†ãªã‚‰ä¸‹ã‹ã‚‰
                 startPos.y += slideDistance;
 
-            targetButtons[i].anchoredPosition = startPos;//‰ŠúˆÊ’u‚ğ•ÏX
-        }
-        originalPositionQue = question.anchoredPosition;
-        Vector2 startPosQue = originalPositionQue;
-        startPosQue.y += slideDistance*2;
-        question.anchoredPosition = startPosQue;
-    }
+            targetButtons[i].anchoredPosition = startPos;//åˆæœŸä½ç½®ã‚’å¤‰æ›´
 
-    public void SlideIn()//ƒtƒF[ƒhƒCƒ“‚ğ‚³‚¹‚é
-    {
-        StopAllCoroutines();
-        for (int i = 0; i < targetButtons.Length; i++)
-        {
+            // ãƒœã‚¿ãƒ³ã‚’æœ‰åŠ¹åŒ–
             var buttonComp = targetButtons[i].GetComponent<Button>();
             if (buttonComp != null)
             {
                 buttonComp.interactable = true;
             }
-
-            StartCoroutine(SlideAnimation(targetButtons[i], targetButtons[i].anchoredPosition, originalPositions[i], slideDuration));
-            StartCoroutine(FadeIn(targetButtons[i]));
         }
-        StartCoroutine(SlideAnimation(question, question.anchoredPosition, originalPositionQue, slideDuration));
-        StartCoroutine(FadeIn(question));
+    }
+
+    /// <summary>
+    /// ä½¿ç”¨ã™ã‚‹ãƒ‘ãƒãƒ«ãƒœã‚¿ãƒ³ã®å¤‰æ›´ã‚’è¡Œã†
+    /// </summary>
+    public void ChangeTargetPanel(int panelNum)
+    {
+        // ç¾åœ¨ä½¿ç”¨ä¸­ã®ãƒœã‚¿ãƒ³ã®ä½ç½®ã‚’åˆæœŸä½ç½®ã«æˆ»ã—ã€ãƒ‘ãƒãƒ«è‡ªä½“ã‚’ç„¡åŠ¹åŒ–
+        for (int i = 0; i < targetButtons.Length; i++)
+        {
+            targetButtons[i].anchoredPosition = originalPositions[i];
+        }
+        targetPanels[targetPanelNum].gameObject.SetActive(false);
+
+        // ä½¿ç”¨ãƒ‘ãƒãƒ«ã®å¤‰æ›´
+        targetPanelNum = panelNum;
+        targetButtons = SetButton(targetPanels[targetPanelNum]); // æŒ‡å®šã—ãŸãƒ‘ãƒãƒ«ã®ãƒœã‚¿ãƒ³ã‚’ã‚»ãƒƒãƒˆ
+        targetPanels[targetPanelNum].gameObject.SetActive(true); // ãƒ‘ãƒãƒ«è‡ªä½“ã®æœ‰åŠ¹åŒ–
+        InitializeButtons();
+    }
+
+    private RectTransform[] SetButton(RectTransform panel)//æŒ‡å®šã—ãŸãƒ‘ãƒãƒ«ã®ä¸­ã®ãƒœã‚¿ãƒ³ã‚’è¿”ã™ã€‚
+    {
+        Button[] buttons = panel.GetComponentsInChildren<Button>();
+        RectTransform[] targetButtons = buttons.Select(b => b.GetComponent<RectTransform>()).ToArray();
+        return targetButtons;
+    }
+
+    /// <summary>
+    /// å•é¡Œæ–‡ã¨é¸æŠè‚¢ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’è¨­å®šã™ã‚‹
+    /// </summary>
+    public void SetQuestionAndChoices(string questionText, string[] choicesTexts)
+    {
+        // å•é¡Œæ–‡ã®è¨­å®š
+        TextMeshProUGUI questionTextComp = question.GetComponentInChildren<TextMeshProUGUI>();
+        if (questionTextComp != null)
+        {
+            questionTextComp.text = questionText;
+        }
+        
+        // é¸æŠè‚¢ã®è¨­å®š
+        int len = Math.Min(choicesTexts.Length, targetButtons.Length);
+        for (int i = 0; i < len; i++)
+        {
+            TextMeshProUGUI buttonTextComp = targetButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonTextComp != null)
+            {
+                buttonTextComp.text = choicesTexts[i];
+            }
+        }
+    }
+
+    /// <summary>
+    /// ã‚¯ã‚¤ã‚ºã®ã‚¹ãƒ©ã‚¤ãƒ‰ã‚¤ãƒ³ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³
+    /// </summary>
+    public IEnumerator SlideInCoroutine()
+    {
+        // â€»ã“ã“ã§ã¯ StopAllCoroutines() ã‚’å‘¼ã°ãªã„ï¼ˆå‘¼ã¶ã¨ã“ã®ã‚³ãƒ«ãƒ¼ãƒãƒ³è‡ªä½“ã‚‚åœæ­¢ã•ã‚Œã‚‹ãŸã‚ï¼‰
+        // ä½•å€‹ã®ã‚³ãƒ«ãƒ¼ãƒãƒ³ã‚’é–‹å§‹ã™ã‚‹ã‹ã‚’æ•°ãˆã‚‹ï¼ˆå„ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã§ Slide + Fade ã®2ã¤ã€question ã‚‚2ã¤ï¼‰
+        int totalCoroutinesToStart = targetButtons.Length * 2 + 2;
+        int remaining = totalCoroutinesToStart;
+
+        // é–‹å§‹ã™ã‚‹ãŸã³ã« RunAndSignal ã§ãƒ©ãƒƒãƒ—ã—ã¦ãŠãã¨ã€å®Œäº†æ™‚ã« remaining-- ã•ã‚Œã‚‹
+        for (int i = 0; i < targetButtons.Length; i++)
+        {
+            var btnRect = targetButtons[i];
+            var buttonComp = btnRect.GetComponent<Button>();
+            if (buttonComp != null) buttonComp.interactable = true;
+
+            // SlideAnimation ã‚’é–‹å§‹ï¼ˆå®Œäº†ã§ remaining--ï¼‰
+            StartCoroutine(RunAndSignal(SlideAnimation(btnRect, btnRect.anchoredPosition, originalPositions[i], slideDuration),
+                () => remaining--));
+
+            // FadeIn ã‚’é–‹å§‹ï¼ˆå®Œäº†ã§ remaining--ï¼‰
+            StartCoroutine(RunAndSignal(FadeIn(btnRect), () => remaining--));
+        }
+
+        // question ã® Slide + Fade
+        StartCoroutine(RunAndSignal(SlideAnimation(question, question.anchoredPosition, originalPositionQue, slideDuration),
+            () => remaining--));
+        StartCoroutine(RunAndSignal(FadeIn(question), () => remaining--));
+
+        // å…¨éƒ¨çµ‚ã‚ã‚‹ã¾ã§å¾…ã¤
+        yield return new WaitUntil(() => remaining <= 0);
+    }
+
+    /// <summary>
+    /// ä»»æ„ã® IEnumerator ã‚’å®Ÿè¡Œã—ã€å®Œäº†æ™‚ã« onComplete ã‚’å‘¼ã¶ãƒ©ãƒƒãƒ‘ãƒ¼
+    /// </summary>
+    private IEnumerator RunAndSignal(IEnumerator routine, Action onComplete)
+    {
+        yield return StartCoroutine(routine);
+        onComplete?.Invoke();
     }
  
-    public void OnButtonClicked(RectTransform clickedButton)   //‚Ç‚Ìƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚½‚Ì‚©‚ğQÆ‚µ‚ÄA‚»‚Ìƒ{ƒ^ƒ“‚Æ‘¼‚Ìƒ{ƒ^ƒ“‚Åˆ—‚ğ•ª‚¯‚é
+    /// <summary>
+    /// ãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸã¨ãã®å‡¦ç†
+    /// ã©ã®ãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸã®ã‹ã‚’å‚ç…§ã—ã¦ã€ãã®ãƒœã‚¿ãƒ³ã¨ä»–ã®ãƒœã‚¿ãƒ³ã§å‡¦ç†ã‚’åˆ†ã‘ã‚‹
+    /// ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰å…¥åŠ›ã®å ´åˆã‚‚ã“ã‚Œã‚’å‘¼ã³å‡ºã™
+    /// </summary>
+    public void OnButtonClicked(RectTransform clickedButton)
     {
-        //ƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚½‚ç‚Ü‚¸‘Sƒ{ƒ^ƒ“‚ğ–³Œø‰»
+        //ãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸã‚‰ã¾ãšå…¨ãƒœã‚¿ãƒ³ã‚’ç„¡åŠ¹åŒ–
         foreach (var btn in targetButtons)
         {
             var buttonComp = btn.GetComponent<Button>();
@@ -94,13 +187,13 @@ public class UIControlller : MonoBehaviour
 
             if (btn == clickedButton)
             {
-                // ‰Ÿ‚³‚ê‚½ƒ{ƒ^ƒ“F’†‰›‚ÉƒXƒ‰ƒCƒh‚µ‚ÄŠg‘å
+                // æŠ¼ã•ã‚ŒãŸãƒœã‚¿ãƒ³ï¼šä¸­å¤®ã«ã‚¹ãƒ©ã‚¤ãƒ‰ã—ã¦æ‹¡å¤§
                 StartCoroutine(SlideAndScaleToCenter(btn));
 
             }
             else
             {
-                // ‘¼‚Ìƒ{ƒ^ƒ“FŒ³‚ÌˆÊ’u‚©‚ç‰æ–ÊŠO‚ÖƒXƒ‰ƒCƒh
+                // ä»–ã®ãƒœã‚¿ãƒ³ï¼šå…ƒã®ä½ç½®ã‹ã‚‰ç”»é¢å¤–ã¸ã‚¹ãƒ©ã‚¤ãƒ‰
                 Vector2 targetPos = originalPositions[i];
                 if (originalPositions[i].y > 0) targetPos.y -= slideDistance;
                 else targetPos.y += slideDistance;
@@ -108,43 +201,36 @@ public class UIControlller : MonoBehaviour
                 StartCoroutine(SlideAnimation(btn, btn.anchoredPosition, targetPos, slideDuration));
             }
 
-            //–â‘è•¶‚ğˆÚ“®
+            //å•é¡Œæ–‡ã‚’ç§»å‹•
             Vector2 targetPosQuestion = originalPositionQue;
-            targetPosQuestion.y = slideDistance * 2;//ˆÚ“®‹——£‚ğã‚°‚é
+            targetPosQuestion.y = slideDistance * 2;//ç§»å‹•è·é›¢ã‚’ä¸Šã’ã‚‹
             StartCoroutine(SlideAnimation(question, question.anchoredPosition, targetPosQuestion, slideDuration * 1.5f));
         }
     }
 
-    public RectTransform[] SetButton(RectTransform panel)//w’è‚µ‚½ƒpƒlƒ‹‚Ì’†‚Ìƒ{ƒ^ƒ“‚ğ•Ô‚·B
-    {
-        Button[] buttons = panel.GetComponentsInChildren<Button>();
-        RectTransform[] targetButtons = buttons.Select(b => b.GetComponent<RectTransform>()).ToArray();
-        return targetButtons;
-    }
-
     /// <summary>
-    /// ‰Ÿ‚³‚ê‚½ƒ{ƒ^ƒ“‚ğ’†‰›‚ÉƒXƒ‰ƒCƒh‚µAƒTƒCƒY‚ğŠg‘å
+    /// æŠ¼ã•ã‚ŒãŸãƒœã‚¿ãƒ³ã‚’ä¸­å¤®ã«ã‚¹ãƒ©ã‚¤ãƒ‰ã—ã€ã‚µã‚¤ã‚ºã‚’æ‹¡å¤§
     /// </summary>
     private IEnumerator SlideAndScaleToCenter(RectTransform btn)
     {
-        Transform parent = btn.transform.parent;//ƒ{ƒ^ƒ“‚ÌeƒIƒuƒWƒFƒNƒg‚ğæ“¾
-        // Layout Group ‚ğˆê–³Œø‰»
+        Transform parent = btn.transform.parent;//ãƒœã‚¿ãƒ³ã®è¦ªã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å–å¾—
+        // Layout Group ã‚’ä¸€æ™‚ç„¡åŠ¹åŒ–
         var layoutGroup = btn.parent.GetComponent<LayoutGroup>();
         if (layoutGroup != null) layoutGroup.enabled = false;
 
-        // ’†‰›‚ÉƒXƒ‰ƒCƒh + “¯‚ÉƒTƒCƒYŠg‘å
+        // ä¸­å¤®ã«ã‚¹ãƒ©ã‚¤ãƒ‰ + åŒæ™‚ã«ã‚µã‚¤ã‚ºæ‹¡å¤§
         Vector2 startPos = btn.anchoredPosition;
 
-        //‰æ–Ê‚Ì’†SÀ•W
+        //ç”»é¢ã®ä¸­å¿ƒåº§æ¨™
         Vector3 screenCenter = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
 
-        // Overlay‚È‚çƒJƒƒ‰•s—v
+        // Overlayãªã‚‰ã‚«ãƒ¡ãƒ©ä¸è¦
         Vector3 worldCenter = screenCenter;
 
-        // ŠJnˆÊ’u‚ÆI—¹ˆÊ’uiƒ[ƒ‹ƒhÀ•Wj
+        // é–‹å§‹ä½ç½®ã¨çµ‚äº†ä½ç½®ï¼ˆãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™ï¼‰
         Vector3 startWorldPos = btn.position;
         Vector3 endWorldPos = worldCenter;
-        endWorldPos.y += 50;//­‚µ‚¾‚¯’†S‚æ‚èã‚ÖˆÚ“® 
+        endWorldPos.y += 50;//å°‘ã—ã ã‘ä¸­å¿ƒã‚ˆã‚Šä¸Šã¸ç§»å‹• 
 
         Vector2 endPos = Vector2.zero;
 
@@ -167,7 +253,7 @@ public class UIControlller : MonoBehaviour
         // btn.anchoredPosition = endPos;
         parent.localScale = targetScale;
 
-        yield return new WaitForSeconds(2f); //‚Q•b‘Ò‚Â
+        yield return new WaitForSeconds(2f); //ï¼’ç§’å¾…ã¤
 
         CanvasGroup cg = btn.GetComponent<CanvasGroup>();
         if (cg == null) cg = btn.gameObject.AddComponent<CanvasGroup>();
@@ -178,7 +264,7 @@ public class UIControlller : MonoBehaviour
             time += Time.deltaTime;
             float t = Mathf.Clamp01(time / fadeDuration);
 
-            cg.alpha = 1f - t; // ™X‚É“§–¾‚É
+            cg.alpha = 1f - t; // å¾ã€…ã«é€æ˜ã«
 
             yield return null;
         }
@@ -187,7 +273,7 @@ public class UIControlller : MonoBehaviour
     }
 
     /// <summary>
-    /// ƒ{ƒ^ƒ“‚ğƒXƒ‰ƒCƒh
+    /// ãƒœã‚¿ãƒ³ã‚’ã‚¹ãƒ©ã‚¤ãƒ‰
     /// </summary>
     private IEnumerator SlideAnimation(RectTransform btn, Vector2 from, Vector2 to, float duration)
     {
@@ -205,10 +291,13 @@ public class UIControlller : MonoBehaviour
         btn.anchoredPosition = to;
     }
 
-    private IEnumerator FadeIn(RectTransform btn)//ƒtƒF[ƒhƒCƒ“
+    /// <summary>
+    /// ãƒ•ã‚§ãƒ¼ãƒ‰ã‚¤ãƒ³
+    /// </summary>
+    private IEnumerator FadeIn(RectTransform btn)
     {
-        float duration = 1.0f;//ƒtƒF[ƒh‚ÌŠÔ
-        CanvasGroup cg = btn.GetComponent<CanvasGroup>();//ƒLƒƒƒ“ƒoƒXƒOƒ‹[ƒv‚Ì’Ç‰Á
+        float duration = 1.0f;//ãƒ•ã‚§ãƒ¼ãƒ‰ã®æ™‚é–“
+        CanvasGroup cg = btn.GetComponent<CanvasGroup>();//ã‚­ãƒ£ãƒ³ãƒã‚¹ã‚°ãƒ«ãƒ¼ãƒ—ã®è¿½åŠ 
         if (cg == null) cg = btn.gameObject.AddComponent<CanvasGroup>();
         cg.alpha = 0f;
         float elapsed = 0f;
@@ -224,9 +313,9 @@ public class UIControlller : MonoBehaviour
         cg.alpha = 1f;
     }
 
-    public void StopAnimations()//ŠO•”‚©‚ç‚ÌƒRƒ‹[ƒ`ƒ“‚ğ~‚ß‚é‚½‚ß‚Ìƒƒ\ƒbƒh
+    public void StopAnimations()//å¤–éƒ¨ã‹ã‚‰ã®ã‚³ãƒ«ãƒ¼ãƒãƒ³ã‚’æ­¢ã‚ã‚‹ãŸã‚ã®ãƒ¡ã‚½ãƒƒãƒ‰
     {
         StopAllCoroutines();
-        Debug.Log("ƒAƒjƒ[ƒVƒ‡ƒ“’â~I");
+        Debug.Log("ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³åœæ­¢ï¼");
     }
 }
