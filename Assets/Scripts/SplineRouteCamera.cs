@@ -2,6 +2,20 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
+// Inspector用分岐設定
+[System.Serializable]
+public class BranchChoice
+{
+  [Tooltip("分岐させるノードのインデックス")]
+  public int nodeIndex;
+  
+  [Tooltip("選択する分岐のインデックス")]
+  public int branchIndex;
+  
+  [Tooltip("この設定の説明")]
+  public string description = "";
+}
+
 // 分岐ポイント用データ構造
 [System.Serializable]
 public class WaypointNode
@@ -40,6 +54,9 @@ public class SplineRouteCamera : MonoBehaviour
   [Header("分岐制御")]
   public bool enableBranching = true;  // 分岐機能の有効/無効
   
+  [Header("Inspector分岐設定")]
+  [SerializeField] private BranchChoice[] manualBranchChoices;  // Inspector用分岐設定
+  
   // 分岐選択のデリゲート（外部制御用）
   // 使用例: camera.branchSelector = (nodeIndex, branchCount) => Random.Range(0, branchCount);
   public delegate int BranchSelector(int nodeIndex, int branchCount);
@@ -69,17 +86,31 @@ public class SplineRouteCamera : MonoBehaviour
       return currentBranchChoices[nodeIndex];
     }
     
-    // 外部制御または デフォルト選択
+    // 1. Inspector設定を優先チェック
+    if (manualBranchChoices != null)
+    {
+      foreach (var choice in manualBranchChoices)
+      {
+        if (choice.nodeIndex == nodeIndex)
+        {
+          int clampedChoice = Mathf.Clamp(choice.branchIndex, 0, node.branches.Length - 1);
+          currentBranchChoices[nodeIndex] = clampedChoice;
+          return clampedChoice;
+        }
+      }
+    }
+    
+    // 2. 外部制御または デフォルト選択
     var selector = branchSelector ?? DefaultBranchSelector;
-    int choice = selector(nodeIndex, node.branches.Length);
+    int result = selector(nodeIndex, node.branches.Length);
     
     // 範囲チェック
-    choice = Mathf.Clamp(choice, 0, node.branches.Length - 1);
+    result = Mathf.Clamp(result, 0, node.branches.Length - 1);
     
     // キャッシュに保存
-    currentBranchChoices[nodeIndex] = choice;
+    currentBranchChoices[nodeIndex] = result;
     
-    return choice;
+    return result;
   }
   
   // 分岐選択をリセット（ルート再生成時に使用）
@@ -119,6 +150,60 @@ public class SplineRouteCamera : MonoBehaviour
     UpdateBranches();
     Debug.Log("[分岐テスト] ランダム分岐選択を有効化しました");
   }
+  
+  // Inspector用: 分岐設定を生成
+  [ContextMenu("分岐設定を自動生成")]
+  public void GenerateBranchSettings()
+  {
+    if (waypointNodes == null) 
+    {
+      Debug.LogWarning("[分岐設定] ウェイポイントが設定されていません");
+      return;
+    }
+    
+    List<BranchChoice> choices = new List<BranchChoice>();
+    
+    for (int i = 0; i < waypointNodes.Length; i++)
+    {
+      var node = waypointNodes[i];
+      if (node.IsBranch)
+      {
+        choices.Add(new BranchChoice
+        {
+          nodeIndex = i,
+          branchIndex = 0,
+          description = $"{node.mainPoint.name}の分岐選択"
+        });
+      }
+    }
+    
+    manualBranchChoices = choices.ToArray();
+    Debug.Log($"[分岐設定] {choices.Count}個の分岐設定を生成しました");
+  }
+  
+  // Inspector用: 分岐情報を表示
+  [ContextMenu("分岐情報を表示")]
+  public void ShowBranchInfo()
+  {
+    if (waypointNodes == null) return;
+    
+    Debug.Log("=== 分岐情報 ===");
+    for (int i = 0; i < waypointNodes.Length; i++)
+    {
+      var node = waypointNodes[i];
+      if (node.IsBranch)
+      {
+        int selected = GetBranchChoice(i);
+        Debug.Log($"ノード[{i}] {node.mainPoint.name}: {node.branches.Length}分岐, 選択中={selected}");
+        
+        for (int j = 0; j < node.branches.Length; j++)
+        {
+          string marker = j == selected ? "★" : "　";
+          Debug.Log($"  {marker}[{j}] {node.branches[j].name}");
+        }
+      }
+    }
+  }
 
   [Header("親からの自動取得")]
   public Transform waypointParent;
@@ -145,6 +230,11 @@ public class SplineRouteCamera : MonoBehaviour
   public bool showGizmos = true;
   public bool showSplinePath = true;
   public bool showSplinePoints = false;
+  
+  [Header("分岐可視化")]
+  public bool showBranches = true;  // 分岐点の表示
+  public bool showBranchConnections = true;  // 分岐への接続線
+  public bool showSelectedBranch = true;  // 選択中分岐の強調表示
 
   private float currentTime = 0f;
   private bool isMoving = false;
@@ -752,10 +842,12 @@ public class SplineRouteCamera : MonoBehaviour
 
     for (int i = 0; i < waypointNodes.Length; i++)
     {
-      if (waypointNodes[i].mainPoint == null) continue;
+      var node = waypointNodes[i];
+      if (node.mainPoint == null) continue;
 
-      Vector3 pos = waypointNodes[i].mainPoint.position;
+      Vector3 pos = node.mainPoint.position;
 
+      // メインポイントの色設定
       if (Application.isPlaying)
       {
         int currentWaypointIndex = GetCurrentWaypointIndex();
@@ -768,13 +860,70 @@ public class SplineRouteCamera : MonoBehaviour
       }
       else
       {
-        Gizmos.color = i == 0 ? Color.green : (i == waypointNodes.Length - 1 ? Color.red : Color.yellow);
+        // 分岐点は特別な色で表示
+        if (node.IsBranch && showBranches)
+        {
+          Gizmos.color = Color.magenta;  // 分岐点は紫色
+        }
+        else
+        {
+          Gizmos.color = i == 0 ? Color.green : (i == waypointNodes.Length - 1 ? Color.red : Color.yellow);
+        }
       }
 
-      Gizmos.DrawWireSphere(pos, 0.8f);
+      // メインポイント描画
+      float radius = node.IsBranch ? 1.2f : 0.8f;  // 分岐点は大きく
+      Gizmos.DrawWireSphere(pos, radius);
 
 #if UNITY_EDITOR
-      UnityEditor.Handles.Label(pos + Vector3.up * 1.2f, $"{i}");
+      string label = node.IsBranch ? $"{i} ({node.branches.Length}分岐)" : $"{i}";
+      UnityEditor.Handles.Label(pos + Vector3.up * 1.5f, label);
+#endif
+
+      // 分岐点の表示
+      if (node.IsBranch && showBranches)
+      {
+        DrawBranchPoints(i, node);
+      }
+    }
+  }
+  
+  // 分岐点とその接続を描画
+  void DrawBranchPoints(int nodeIndex, WaypointNode node)
+  {
+    if (!showBranches || node.branches == null) return;
+    
+    Vector3 mainPos = node.mainPoint.position;
+    int selectedBranch = GetBranchChoice(nodeIndex);
+
+    for (int j = 0; j < node.branches.Length; j++)
+    {
+      if (node.branches[j] == null) continue;
+      
+      Vector3 branchPos = node.branches[j].position;
+      
+      // 選択中/未選択で色分け
+      if (j == selectedBranch && showSelectedBranch)
+      {
+        Gizmos.color = Color.cyan;  // 選択中は水色
+      }
+      else
+      {
+        Gizmos.color = Color.white;  // 未選択は白
+      }
+      
+      // 分岐点を描画
+      Gizmos.DrawWireSphere(branchPos, 0.5f);
+      
+      // メインポイントとの接続線
+      if (showBranchConnections)
+      {
+        Gizmos.DrawLine(mainPos, branchPos);
+      }
+
+#if UNITY_EDITOR
+      string branchLabel = j == selectedBranch ? $"[{j}]★" : $"[{j}]";
+      UnityEditor.Handles.Label(branchPos + Vector3.up * 0.8f, branchLabel);
 #endif
     }
   }
