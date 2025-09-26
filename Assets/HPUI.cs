@@ -1,6 +1,7 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
+using UnityEngine.Video;
 
 public class HPUI : MonoBehaviour
 {
@@ -8,6 +9,9 @@ public class HPUI : MonoBehaviour
     [SerializeField] private Image warningPanel; // 赤い警告用のパネル
     [SerializeField] private Image[] cracks;//ダメージを受けた時の画面のひび割れ
     [SerializeField] private UIShake uiShake;//画面を揺らすよう
+    [SerializeField] private VideoPlayer[] smokeVideoPlayers; // 煙動画用の VideoPlayer 配列
+    [SerializeField] private RawImage[] smokeRawImages;       // 煙表示用の RawImage 配列
+    private int smokeIndex = 0;                                // 次に出す煙の番号
     private int maxHP = 3;
 
     private int currentHP;
@@ -21,6 +25,11 @@ public class HPUI : MonoBehaviour
         {
             cracks[i].gameObject.SetActive(false);
         }
+
+        // 煙動画を非表示に
+        for (int i = 0; i < smokeRawImages.Length; i++)
+            smokeRawImages[i].gameObject.SetActive(false);
+
         UpdateUI();
     }
 
@@ -34,7 +43,7 @@ public class HPUI : MonoBehaviour
 
         currentHP -= damage;
         currentHP = Mathf.Clamp(currentHP, 0, maxHP);
-        Debug.Log(currentHP);
+        
         // HP に応じてひびを表示
         if (maxHP - currentHP-1 >= 0 && maxHP - currentHP-1 < cracks.Length)
         {
@@ -46,6 +55,15 @@ public class HPUI : MonoBehaviour
         {
             StartCoroutine(FadeOut(barriers[currentHP]));
         }
+
+        // 煙動画を順番に再生
+        if (smokeIndex < smokeRawImages.Length)
+        {
+            smokeRawImages[smokeIndex].gameObject.SetActive(true);
+            smokeVideoPlayers[smokeIndex].Play();
+            smokeIndex++;
+        }
+
 
         UpdateUI();
     }
