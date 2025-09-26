@@ -16,6 +16,9 @@ public class SplineRouteCamera : MonoBehaviour
   [Header("スプライン設定")]
   public float totalTravelTime = 30f;
   public AnimationCurve speedCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  [Header("ループ時スピード設定")]
+  public bool useLoopSpeedCurve = true;
+  public AnimationCurve loopSpeedCurve = AnimationCurve.Linear(0, 0, 1, 1);
   [Range(0.1f, 5f)]
   public float splineTension = 1f;
   public int splineResolution = 100;
@@ -49,9 +52,19 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (waypoints != null && waypoints.Length > 0)
     {
-      // 修正：常にwaypoints[0]の位置から開始
-      transform.position = waypoints[0].position;
-      Debug.Log($"[スタート設定] 開始位置: {waypoints[0].position}");
+      // 修正：スプライン計算と一致する開始位置を設定
+      Vector3 startPosition;
+      if (splinePoints != null && splinePoints.Length > 0)
+      {
+        startPosition = GetSplinePosition(0f);
+      }
+      else
+      {
+        startPosition = waypoints[0].position;
+      }
+      
+      transform.position = startPosition;
+      Debug.Log($"[スタート設定] 開始位置: {startPosition}");
     }
 
     if (autoStart)
@@ -67,36 +80,42 @@ public class SplineRouteCamera : MonoBehaviour
     currentTime += Time.deltaTime;
     float normalizedTime = currentTime / totalTravelTime;
 
-    // ループ処理
-    if (normalizedTime >= 1f)
+    // **完全に書き直し：シンプルなループ処理**
+    if (loop)
     {
-      if (loop)
-      {
-        while (normalizedTime >= 1f)
-        {
-          normalizedTime -= 1f;
-        }
-        currentTime = normalizedTime * totalTravelTime;
-      }
-      else
-      {
-        isMoving = false;
-        normalizedTime = 1f;
-      }
+      // ループ時：normalizedTimeを0-1の範囲に制限
+      normalizedTime = normalizedTime % 1f;
+    }
+    else if (normalizedTime >= 1f)
+    {
+      // 非ループ時：終了処理
+      isMoving = false;
+      normalizedTime = 1f;
     }
 
+    // スピードカーブを適用（ループ時は専用カーブで停止を防ぐ）
+    float curvedTime;
+    if (loop && useLoopSpeedCurve)
+    {
+      // ループ時は専用スピードカーブ（停止を防ぐため）
+      curvedTime = loopSpeedCurve.Evaluate(normalizedTime);
+    }
+    else
+    {
+      // 通常のスピードカーブを適用
+      curvedTime = speedCurve.Evaluate(normalizedTime);
+    }
+    
     Vector3 newPosition, lookDirection;
 
     if (useConstantSpeed)
     {
-      float curvedTime = speedCurve.Evaluate(normalizedTime);
       float targetDistance = curvedTime * totalSplineLength;
       newPosition = GetSplinePositionByDistance(targetDistance);
       lookDirection = GetSplineTangentByDistance(targetDistance);
     }
     else
     {
-      float curvedTime = speedCurve.Evaluate(normalizedTime);
       newPosition = GetSplinePosition(curvedTime);
       lookDirection = GetSplineTangent(curvedTime);
     }
@@ -214,7 +233,7 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (loop)
     {
-      // ループ時は配列全体を使用
+      // ループ時：normalizedTimeは既に0-1の範囲内
       float exactIndex = normalizedTime * splinePoints.Length;
       int index = Mathf.FloorToInt(exactIndex) % splinePoints.Length;
       float fraction = exactIndex - Mathf.FloorToInt(exactIndex);
@@ -248,6 +267,7 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (loop)
     {
+      // ループ時：normalizedTimeは既に0-1の範囲内
       float exactIndex = normalizedTime * splinePoints.Length;
       int index = Mathf.FloorToInt(exactIndex) % splinePoints.Length;
       int nextIndex = (index + 1) % splinePoints.Length;
@@ -638,11 +658,23 @@ public class SplineRouteCamera : MonoBehaviour
     if (splinePoints == null || splinePoints.Length == 0) return 0;
 
     float normalizedTime = currentTime / totalTravelTime;
-    float curvedTime = speedCurve.Evaluate(normalizedTime);
+    if (loop) normalizedTime = normalizedTime % 1f;
+    
+    float curvedTime;
+    if (loop && useLoopSpeedCurve)
+    {
+      // ループ時は専用スピードカーブ（停止を防ぐため）
+      curvedTime = loopSpeedCurve.Evaluate(normalizedTime);
+    }
+    else
+    {
+      curvedTime = speedCurve.Evaluate(normalizedTime);
+    }
 
     if (loop)
     {
-      return Mathf.FloorToInt((curvedTime * waypoints.Length)) % waypoints.Length;
+      // ループ時のウェイポイントインデックス計算
+      return Mathf.FloorToInt(curvedTime * waypoints.Length) % waypoints.Length;
     }
     else
     {
