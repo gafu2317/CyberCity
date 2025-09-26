@@ -77,35 +77,33 @@ public class SplineRouteCamera : MonoBehaviour
   {
     if (!isMoving || splinePoints == null || splinePoints.Length == 0) return;
 
+    // 時間管理
     currentTime += Time.deltaTime;
     float normalizedTime = currentTime / totalTravelTime;
 
-    // **完全に書き直し：シンプルなループ処理**
+    // ループ処理
     if (loop)
     {
-      // ループ時：normalizedTimeを0-1の範囲に制限
-      normalizedTime = normalizedTime % 1f;
+      normalizedTime = normalizedTime % 1f;  // 0-1で循環
     }
     else if (normalizedTime >= 1f)
     {
-      // 非ループ時：終了処理
       isMoving = false;
       normalizedTime = 1f;
     }
 
-    // スピードカーブを適用（ループ時は専用カーブで停止を防ぐ）
+    // スピードカーブ適用（ループ停止防止）
     float curvedTime;
     if (loop && useLoopSpeedCurve)
     {
-      // ループ時は専用スピードカーブ（停止を防ぐため）
-      curvedTime = loopSpeedCurve.Evaluate(normalizedTime);
+      curvedTime = loopSpeedCurve.Evaluate(normalizedTime);  // Linearカーブで停止防止
     }
     else
     {
-      // 通常のスピードカーブを適用
       curvedTime = speedCurve.Evaluate(normalizedTime);
     }
     
+    // 位置計算
     Vector3 newPosition, lookDirection;
 
     if (useConstantSpeed)
@@ -120,6 +118,7 @@ public class SplineRouteCamera : MonoBehaviour
       lookDirection = GetSplineTangent(curvedTime);
     }
 
+    // カメラ更新
     transform.position = newPosition;
     HandleSplineRotation(lookDirection, normalizedTime);
 
@@ -142,7 +141,6 @@ public class SplineRouteCamera : MonoBehaviour
     Vector3[] controlPoints = PrepareControlPoints();
     List<Vector3> splinePointList = new List<Vector3>();
 
-    // 修正：正確なセグメント数を計算
     int segments = loop ? waypoints.Length : waypoints.Length - 1;
     int pointsPerSegment = Mathf.Max(4, splineResolution / segments);
 
@@ -162,7 +160,6 @@ public class SplineRouteCamera : MonoBehaviour
       }
     }
 
-    // 修正：ループしない場合のみ最後の点を追加
     if (!loop)
     {
       splinePointList.Add(waypoints[waypoints.Length - 1].position);
@@ -178,37 +175,31 @@ public class SplineRouteCamera : MonoBehaviour
     }
   }
 
+  // スプライン用制御点準備
   Vector3[] PrepareControlPoints()
   {
     List<Vector3> points = new List<Vector3>();
 
     if (loop && waypoints.Length >= 3)
     {
-      // 修正：ループ用の制御点配列をより明確に構築
-      // 前後の制御点を追加してスムーズな補間を実現
-      points.Add(waypoints[waypoints.Length - 1].position); // 最後の点を最初の制御点として
+      // ループ用: [last, w0, w1, ..., wN, w0, w1]
+      points.Add(waypoints[waypoints.Length - 1].position);
 
-      // 全てのウェイポイントを追加
       foreach (Transform waypoint in waypoints)
       {
         points.Add(waypoint.position);
       }
-
-      // ループ用に最初の2点を再度追加
       points.Add(waypoints[0].position);
       points.Add(waypoints[1].position);
     }
     else
     {
-      // 非ループ時の処理
-      points.Add(waypoints[0].position); // 最初の点を制御点として複製
-
+      points.Add(waypoints[0].position);
       foreach (Transform waypoint in waypoints)
       {
         points.Add(waypoint.position);
       }
-
-      points.Add(waypoints[waypoints.Length - 1].position); // 最後の点を制御点として複製
+      points.Add(waypoints[waypoints.Length - 1].position);
     }
 
     return points.ToArray();
@@ -233,7 +224,6 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (loop)
     {
-      // ループ時：normalizedTimeは既に0-1の範囲内
       float exactIndex = normalizedTime * splinePoints.Length;
       int index = Mathf.FloorToInt(exactIndex) % splinePoints.Length;
       float fraction = exactIndex - Mathf.FloorToInt(exactIndex);
