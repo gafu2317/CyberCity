@@ -7,6 +7,7 @@ public class HPUI : MonoBehaviour
     [SerializeField] private Image[] barriers; // 右上のバリア画像を3つセット
     [SerializeField] private Image warningPanel; // 赤い警告用のパネル
     [SerializeField] private Image[] cracks;//ダメージを受けた時の画面のひび割れ
+    [SerializeField] private UIShake uiShake;//画面を揺らすよう
     private int maxHP = 3;
 
     private int currentHP;
@@ -26,6 +27,10 @@ public class HPUI : MonoBehaviour
     public void TakeDamage(int damage = 1)
     {
         if (currentHP <= 0) return;
+
+        // ダメージ時にUIを揺らす
+        if (uiShake != null)
+            uiShake.Shake();
 
         currentHP -= damage;
         currentHP = Mathf.Clamp(currentHP, 0, maxHP);
