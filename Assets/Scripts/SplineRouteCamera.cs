@@ -23,107 +23,182 @@ public class WaypointNode
   [Header("基本ポイント")]
   public Transform mainPoint;
   
-  [Header("分岐設定")]
-  public Transform[] branches;  // nullまたは空なら通常ポイント
+  [Header("分岐設定（4つ固定）")]
+  public Transform[] branches = new Transform[4];  // 4つ固定
   
-  // 分岐点かどうかを判定
-  public bool IsBranch => branches != null && branches.Length > 1;
+  // 分岐点かどうかを判定（有効な分岐が1つ以上ある場合）
+  public bool IsBranch => branches != null && branches.Length == 4 && GetValidBranchCount() > 1;
+  
+  // 有効な分岐数を取得
+  public int GetValidBranchCount()
+  {
+    if (branches == null || branches.Length != 4) return 0;
+    
+    int count = 0;
+    for (int i = 0; i < 4; i++)
+    {
+      if (branches[i] != null) count++;
+    }
+    return count;
+  }
   
   // 選択されたポイントを取得（分岐点でない場合はmainPoint）
   public Transform GetSelectedPoint(int branchIndex = 0)
   {
     if (!IsBranch) return mainPoint;
     
-    if (branchIndex < 0 || branchIndex >= branches.Length)
+    // 指定されたインデックスが有効かチェック
+    if (branchIndex >= 0 && branchIndex < 4 && branches[branchIndex] != null)
     {
-      Debug.LogWarning($"分岐インデックス {branchIndex} が範囲外です。デフォルトを使用します。");
-      return branches.Length > 0 ? branches[0] : mainPoint;
+      return branches[branchIndex];
     }
     
-    return branches[branchIndex];
+    // 指定された分岐が存在しない場合、有効な分岐からランダム選択
+    var validBranches = new System.Collections.Generic.List<int>();
+    for (int i = 0; i < 4; i++)
+    {
+      if (branches[i] != null) validBranches.Add(i);
+    }
+    
+    if (validBranches.Count == 0) return mainPoint;
+    
+    int randomIndex = validBranches[UnityEngine.Random.Range(0, validBranches.Count)];
+    
+    return branches[randomIndex];
   }
 }
 
 public class SplineRouteCamera : MonoBehaviour
 {
   [Header("基本設定")]
-  public WaypointNode[] waypointNodes;  // 新しい分岐対応構造
+  public WaypointNode[] waypointNodes;
   public Transform lookAtTarget;
   public float rotationSpeed = 2f;
   
   [Header("分岐制御")]
-  public bool enableBranching = true;  // 分岐機能の有効/無効
+  [SerializeField] private BranchChoice[] manualBranchChoices;
   
-  [Header("Inspector分岐設定")]
-  [SerializeField] private BranchChoice[] manualBranchChoices;  // Inspector用分岐設定
+  // シンプルな分岐制御
+  private Dictionary<int, int> fixedBranchChoices = new Dictionary<int, int>();
   
-  // 分岐選択のデリゲート（外部制御用）
-  // 使用例: camera.branchSelector = (nodeIndex, branchCount) => Random.Range(0, branchCount);
-  public delegate int BranchSelector(int nodeIndex, int branchCount);
-  public BranchSelector branchSelector;
   
-  // デフォルトの分岐選択（最初の選択肢を選ぶ）
-  private int DefaultBranchSelector(int nodeIndex, int branchCount)
+  // 外部から分岐を指定するメソッド（0-3）
+  public void SetNextBranchChoice(int branchIndex)
   {
-    return 0;  // 常に最初の分岐を選択
+    if (branchIndex < 0 || branchIndex > 3)
+    {
+      return;
+    }
+    
+    // 次に来る分岐点を特定して設定
+    int nextBranchNode = FindNextBranchNode();
+    if (nextBranchNode >= 0)
+    {
+      fixedBranchChoices[nextBranchNode] = branchIndex;
+      GenerateSpline();
+    }
   }
   
-  // 現在の分岐選択状況を保存
-  private Dictionary<int, int> currentBranchChoices = new Dictionary<int, int>();
+  // 次の分岐点を特定
+  private int FindNextBranchNode()
+  {
+    if (waypointNodes == null || waypointNodes.Length == 0) return -1;
+    
+    // 現在位置から順番に分岐点を探す
+    int currentIndex = EstimateCurrentWaypointIndex();
+    for (int offset = 1; offset < waypointNodes.Length; offset++)
+    {
+      int targetIndex = (currentIndex + offset) % waypointNodes.Length;
+      if (waypointNodes[targetIndex].IsBranch)
+      {
+        return targetIndex;
+      }
+    }
+    return -1;
+  }
   
-  // 分岐選択を取得（キャッシュ付き）
+  // 現在位置推定
+  private int EstimateCurrentWaypointIndex()
+  {
+    if (!isMoving || waypointNodes == null || waypointNodes.Length == 0) return 0;
+    float normalizedTime = (currentTime / totalTravelTime) % 1.0f;
+    return Mathf.FloorToInt(normalizedTime * waypointNodes.Length) % waypointNodes.Length;
+  }
+  
+  // 分岐選択を取得（シンプル版）
   private int GetBranchChoice(int nodeIndex)
   {
-    if (!enableBranching) return 0;
     if (waypointNodes == null || nodeIndex >= waypointNodes.Length) return 0;
     
     var node = waypointNodes[nodeIndex];
     if (!node.IsBranch) return 0;
     
-    // キャッシュから取得を試行
-    if (currentBranchChoices.ContainsKey(nodeIndex))
+    // 1. 固定された分岐選択をチェック
+    if (fixedBranchChoices.ContainsKey(nodeIndex))
     {
-      return currentBranchChoices[nodeIndex];
+      return fixedBranchChoices[nodeIndex];
     }
     
-    // 1. Inspector設定を優先チェック
+    // 2. Inspector設定をチェック
     if (manualBranchChoices != null)
     {
       foreach (var choice in manualBranchChoices)
       {
         if (choice.nodeIndex == nodeIndex)
         {
-          int clampedChoice = Mathf.Clamp(choice.branchIndex, 0, node.branches.Length - 1);
-          currentBranchChoices[nodeIndex] = clampedChoice;
-          return clampedChoice;
+          return Mathf.Clamp(choice.branchIndex, 0, 3);
         }
       }
     }
     
-    // 2. 外部制御または デフォルト選択
-    var selector = branchSelector ?? DefaultBranchSelector;
-    int result = selector(nodeIndex, node.branches.Length);
-    
-    // 範囲チェック
-    result = Mathf.Clamp(result, 0, node.branches.Length - 1);
-    
-    // キャッシュに保存
-    currentBranchChoices[nodeIndex] = result;
-    
-    return result;
+    // 3. デフォルトは0番
+    return 0;
   }
   
-  // 分岐選択をリセット（ルート再生成時に使用）
-  public void ClearBranchChoices()
-  {
-    currentBranchChoices.Clear();
-  }
   
   // 分岐を更新してスプラインを再生成
   public void UpdateBranches()
   {
-    ClearBranchChoices();
     GenerateSpline();
+    
+    // 実行時の場合、現在位置を維持
+    if (Application.isPlaying && isMoving)
+    {
+      PreserveCurrentPosition();
+    }
+  }
+  
+  // 現在の位置を新しいスプライン上で維持
+  void PreserveCurrentPosition()
+  {
+    if (splinePoints == null || splinePoints.Length == 0) return;
+    
+    Vector3 currentPos = transform.position;
+    
+    // 新しいスプライン上で最も近い位置を見つける
+    float closestDistance = float.MaxValue;
+    float closestTime = 0f;
+    
+    // スプライン上の複数点をチェック
+    for (int i = 0; i < 100; i++)
+    {
+      float testTime = i / 99f;
+      Vector3 splinePos = GetSplinePosition(testTime);
+      float distance = Vector3.Distance(currentPos, splinePos);
+      
+      if (distance < closestDistance)
+      {
+        closestDistance = distance;
+        closestTime = testTime;
+      }
+    }
+    
+    // 現在時間を調整して位置を維持
+    currentTime = closestTime * totalTravelTime;
+    
+    if (enableDebugMode)
+    {
+    }
   }
   
   // 特定の分岐選択を強制設定
@@ -132,23 +207,14 @@ public class SplineRouteCamera : MonoBehaviour
     if (waypointNodes == null || nodeIndex >= waypointNodes.Length) return;
     if (!waypointNodes[nodeIndex].IsBranch) return;
     
-    currentBranchChoices[nodeIndex] = branchIndex;
     UpdateBranches();  // 即座にスプライン再生成
-    Debug.Log($"[分岐設定] ノード{nodeIndex}で分岐{branchIndex}を選択");
   }
   
-  // テスト用: ランダム分岐選択を設定
+  // テスト用: ランダム分岐選択を設定（削除予定）
   [ContextMenu("ランダム分岐テスト")]
   public void SetRandomBranchSelection()
   {
-    branchSelector = (nodeIndex, branchCount) => {
-      int choice = UnityEngine.Random.Range(0, branchCount);
-      Debug.Log($"[ランダム分岐] ノード{nodeIndex}: {branchCount}個中{choice}番目を選択");
-      return choice;
-    };
-    
     UpdateBranches();
-    Debug.Log("[分岐テスト] ランダム分岐選択を有効化しました");
   }
   
   // Inspector用: 分岐設定を生成
@@ -157,7 +223,6 @@ public class SplineRouteCamera : MonoBehaviour
   {
     if (waypointNodes == null) 
     {
-      Debug.LogWarning("[分岐設定] ウェイポイントが設定されていません");
       return;
     }
     
@@ -178,7 +243,6 @@ public class SplineRouteCamera : MonoBehaviour
     }
     
     manualBranchChoices = choices.ToArray();
-    Debug.Log($"[分岐設定] {choices.Count}個の分岐設定を生成しました");
   }
   
   // Inspector用: 分岐情報を表示
@@ -187,23 +251,96 @@ public class SplineRouteCamera : MonoBehaviour
   {
     if (waypointNodes == null) return;
     
-    Debug.Log("=== 分岐情報 ===");
     for (int i = 0; i < waypointNodes.Length; i++)
     {
       var node = waypointNodes[i];
       if (node.IsBranch)
       {
         int selected = GetBranchChoice(i);
-        Debug.Log($"ノード[{i}] {node.mainPoint.name}: {node.branches.Length}分岐, 選択中={selected}");
         
         for (int j = 0; j < node.branches.Length; j++)
         {
           string marker = j == selected ? "★" : "　";
-          Debug.Log($"  {marker}[{j}] {node.branches[j].name}");
         }
       }
     }
   }
+  
+  // キーボード入力処理
+  void HandleKeyboardInput()
+  {
+    if (waypointNodes == null) return;
+    
+    // 0-3キーで次の分岐選択を指定
+    if (Input.GetKeyDown(KeyCode.Alpha0)) SetNextBranchChoice(0);
+    if (Input.GetKeyDown(KeyCode.Alpha1)) SetNextBranchChoice(1);
+    if (Input.GetKeyDown(KeyCode.Alpha2)) SetNextBranchChoice(2);
+    if (Input.GetKeyDown(KeyCode.Alpha3)) SetNextBranchChoice(3);
+  }
+  
+  // デバッグ情報を画面表示
+  void OnGUI()
+  {
+    if (!enableDebugMode || !Application.isPlaying) return;
+    
+    GUILayout.BeginArea(new Rect(10, 10, 500, 700));
+    
+    var titleStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
+    var headerStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
+    var normalStyle = new GUIStyle(GUI.skin.label) { fontSize = 14 };
+    
+    GUILayout.Label("=== 分岐システム デバッグ情報 ===", titleStyle);
+    
+    // 基本情報
+    GUILayout.Label($"ウェイポイント数: {(waypointNodes?.Length ?? 0)}", normalStyle);
+    GUILayout.Label($"現在位置: {EstimateCurrentWaypointIndex()}", normalStyle);
+    GUILayout.Label($"現在時間: {currentTime:F2} / {totalTravelTime:F2}", normalStyle);
+    
+    GUILayout.Space(15);
+    GUILayout.Label("=== 分岐情報 ===", headerStyle);
+    
+    // 分岐点情報
+    if (waypointNodes != null)
+    {
+      for (int i = 0; i < waypointNodes.Length; i++)
+      {
+        var node = waypointNodes[i];
+        if (node.IsBranch)
+        {
+          int selectedBranch = GetBranchChoice(i);
+          int validBranches = node.GetValidBranchCount();
+          
+          GUILayout.Label($"ノード[{i}]: {validBranches}分岐 → 選択中: {selectedBranch}", normalStyle);
+          
+          // 各分岐の詳細
+          for (int j = 0; j < 4; j++)
+          {
+            if (node.branches[j] != null)
+            {
+              string marker = j == selectedBranch ? "★" : "　";
+              GUILayout.Label($"  {marker}[{j}] {node.branches[j].name}", normalStyle);
+            }
+          }
+          GUILayout.Space(8);
+        }
+      }
+    }
+    
+    // 外部制御状態
+    GUILayout.Space(15);
+    GUILayout.Label("=== 制御状態 ===", headerStyle);
+    GUILayout.Label($"デバッグモード: 有効", normalStyle);
+    
+    // 固定された分岐設定
+    GUILayout.Label("固定分岐設定:", normalStyle);
+    foreach (var kvp in fixedBranchChoices)
+    {
+      GUILayout.Label($"  ノード{kvp.Key} → 分岐{kvp.Value}", normalStyle);
+    }
+    
+    GUILayout.EndArea();
+  }
+  
 
   [Header("親からの自動取得")]
   public Transform waypointParent;
@@ -225,16 +362,8 @@ public class SplineRouteCamera : MonoBehaviour
   public bool loop = false;
   public bool autoStart = true;
 
-  [Header("デバッグ設定")]
-  public bool showDebugInfo = true;
-  public bool showGizmos = true;
-  public bool showSplinePath = true;
-  public bool showSplinePoints = false;
-  
-  [Header("分岐可視化")]
-  public bool showBranches = true;  // 分岐点の表示
-  public bool showBranchConnections = true;  // 分岐への接続線
-  public bool showSelectedBranch = true;  // 選択中分岐の強調表示
+  [Header("デバッグ・表示")]
+  public bool enableDebugMode = true;
 
   private float currentTime = 0f;
   private bool isMoving = false;
@@ -265,7 +394,6 @@ public class SplineRouteCamera : MonoBehaviour
       }
       
       transform.position = startPosition;
-      Debug.Log($"[スタート設定] 開始位置: {startPosition}");
     }
 
     if (autoStart)
@@ -276,6 +404,12 @@ public class SplineRouteCamera : MonoBehaviour
 
   void Update()
   {
+    // キーボード制御チェック
+    if (enableDebugMode && Application.isPlaying)
+    {
+      HandleKeyboardInput();
+    }
+    
     if (!isMoving || splinePoints == null || splinePoints.Length == 0) return;
 
     // 時間管理
@@ -323,11 +457,10 @@ public class SplineRouteCamera : MonoBehaviour
     transform.position = newPosition;
     HandleSplineRotation(lookDirection, normalizedTime);
 
-    if (showDebugInfo && Time.frameCount % 60 == 0)
+    if (enableDebugMode && Time.frameCount % 60 == 0)
     {
       float progress = normalizedTime * 100f;
       string mode = useConstantSpeed ? "一定速度" : "時間ベース";
-      Debug.Log($"[SplineCamera] 進行: {progress:F1}% | モード: {mode}");
     }
   }
 
@@ -335,7 +468,6 @@ public class SplineRouteCamera : MonoBehaviour
   {
     if (waypointNodes == null || waypointNodes.Length < 2)
     {
-      Debug.LogError("[SplineCamera] 最低2個のウェイポイントが必要です");
       return;
     }
 
@@ -369,10 +501,9 @@ public class SplineRouteCamera : MonoBehaviour
     splinePoints = splinePointList.ToArray();
     CalculateSplineLength();
 
-    if (showDebugInfo)
+    if (enableDebugMode)
     {
       string loopStatus = loop ? "ループあり" : "ループなし";
-      Debug.Log($"[SplineCamera] スプライン生成完了: {splinePoints.Length}点, 全長: {totalSplineLength:F2} ({loopStatus})");
     }
   }
 
@@ -415,7 +546,7 @@ public class SplineRouteCamera : MonoBehaviour
       return Vector3.zero;
       
     var node = waypointNodes[nodeIndex];
-    if (!node.IsBranch || !enableBranching)
+    if (!node.IsBranch)
       return node.mainPoint.position;
       
     int branchChoice = GetBranchChoice(nodeIndex);
@@ -582,9 +713,8 @@ public class SplineRouteCamera : MonoBehaviour
       totalSplineLength += Vector3.Distance(splinePoints[i], splinePoints[nextIndex]);
     }
 
-    if (showDebugInfo)
+    if (enableDebugMode)
     {
-      Debug.Log($"[SplineCamera] スプライン全長: {totalSplineLength:F2}");
     }
   }
 
@@ -663,18 +793,15 @@ public class SplineRouteCamera : MonoBehaviour
 
     if (!NodesEqual(oldNodes, waypointNodes))
     {
-      if (Application.isPlaying == false && showDebugInfo)
+      if (Application.isPlaying == false && enableDebugMode)
       {
-        Debug.Log($"[SplineCamera] ウェイポイント更新: {waypointNodes.Length}個");
         for (int i = 0; i < Mathf.Min(waypointNodes.Length, 5); i++)
         {
           var node = waypointNodes[i];
           string branchInfo = node.IsBranch ? $" ({node.branches.Length}分岐)" : "";
-          Debug.Log($"  [{i}] {node.mainPoint.name}{branchInfo}");
         }
         if (waypointNodes.Length > 5)
         {
-          Debug.Log($"  ... 他 {waypointNodes.Length - 5}個");
         }
       }
     }
@@ -778,7 +905,6 @@ public class SplineRouteCamera : MonoBehaviour
   {
     if (waypointNodes == null || waypointNodes.Length < 2)
     {
-      Debug.LogWarning("[SplineCamera] 最低2個のウェイポイントが必要です");
       return false;
     }
 
@@ -787,7 +913,6 @@ public class SplineRouteCamera : MonoBehaviour
       var node = waypointNodes[i];
       if (node.mainPoint == null)
       {
-        Debug.LogError($"[SplineCamera] waypointNodes[{i}].mainPointがnullです");
         return false;
       }
       
@@ -798,7 +923,6 @@ public class SplineRouteCamera : MonoBehaviour
         {
           if (node.branches[j] == null)
           {
-            Debug.LogError($"[SplineCamera] waypointNodes[{i}].branches[{j}]がnullです");
             return false;
           }
         }
@@ -815,17 +939,15 @@ public class SplineRouteCamera : MonoBehaviour
     if (waypointNodes != null && waypointNodes.Length >= 2)
     {
       GenerateSpline();
-      Debug.Log($"[SplineCamera] 強制更新完了: {waypointNodes.Length}個のウェイポイント");
     }
     else
     {
-      Debug.LogWarning("[SplineCamera] ウェイポイントが足りません（最低2個必要）");
     }
   }
 
   void OnDrawGizmos()
   {
-    if (!showGizmos) return;
+    if (!enableDebugMode) return;
 
     DrawWaypoints();
     DrawSplinePath();
@@ -861,7 +983,7 @@ public class SplineRouteCamera : MonoBehaviour
       else
       {
         // 分岐点は特別な色で表示
-        if (node.IsBranch && showBranches)
+        if (node.IsBranch)
         {
           Gizmos.color = Color.magenta;  // 分岐点は紫色
         }
@@ -881,7 +1003,7 @@ public class SplineRouteCamera : MonoBehaviour
 #endif
 
       // 分岐点の表示
-      if (node.IsBranch && showBranches)
+      if (node.IsBranch)
       {
         DrawBranchPoints(i, node);
       }
@@ -891,7 +1013,7 @@ public class SplineRouteCamera : MonoBehaviour
   // 分岐点とその接続を描画
   void DrawBranchPoints(int nodeIndex, WaypointNode node)
   {
-    if (!showBranches || node.branches == null) return;
+    if (node.branches == null) return;
     
     Vector3 mainPos = node.mainPoint.position;
     int selectedBranch = GetBranchChoice(nodeIndex);
@@ -903,7 +1025,7 @@ public class SplineRouteCamera : MonoBehaviour
       Vector3 branchPos = node.branches[j].position;
       
       // 選択中/未選択で色分け
-      if (j == selectedBranch && showSelectedBranch)
+      if (j == selectedBranch)
       {
         Gizmos.color = Color.cyan;  // 選択中は水色
       }
@@ -916,7 +1038,7 @@ public class SplineRouteCamera : MonoBehaviour
       Gizmos.DrawWireSphere(branchPos, 0.5f);
       
       // メインポイントとの接続線
-      if (showBranchConnections)
+      // 接続線を描画
       {
         Gizmos.DrawLine(mainPos, branchPos);
       }
@@ -930,7 +1052,7 @@ public class SplineRouteCamera : MonoBehaviour
 
   void DrawSplinePath()
   {
-    if (!showSplinePath) return;
+    // スプライン線を描画
 
     if (!Application.isPlaying && waypointNodes != null && waypointNodes.Length >= 2)
     {
@@ -949,7 +1071,7 @@ public class SplineRouteCamera : MonoBehaviour
       Gizmos.DrawLine(splinePoints[i], splinePoints[nextIndex]);
     }
 
-    if (showSplinePoints)
+    // スプライン点の表示
     {
       Gizmos.color = new Color(1f, 0.5f, 0f, 0.3f);
       foreach (Vector3 point in splinePoints)
