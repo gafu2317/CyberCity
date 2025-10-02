@@ -12601,7 +12601,6 @@ MonoBehaviour:
     - {fileID: 0}
   lookAtTarget: {fileID: 0}
   rotationSpeed: 2
-  enableBranching: 1
   manualBranchChoices:
   - nodeIndex: 1
     branchIndex: 2
@@ -12664,15 +12663,7 @@ MonoBehaviour:
   speedMultiplier: 1.2
   loop: 1
   autoStart: 1
-  showDebugInfo: 0
-  showGizmos: 1
-  showSplinePath: 1
-  showSplinePoints: 0
-  showBranches: 1
-  showBranchConnections: 1
-  showSelectedBranch: 1
-  enableKeyboardControl: 1
-  enableRealtimeBranchSwitch: 1
+  enableDebugMode: 1
 --- !u!65 &7786130230507634431
 BoxCollider:
   m_ObjectHideFlags: 0
