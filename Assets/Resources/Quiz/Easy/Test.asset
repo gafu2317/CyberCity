@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7effc389044254dfe900dd15ec29598d, type: 3}
+  m_Name: Test
+  m_EditorClassIdentifier: 
+  Qusetion: "\u3053\u308C\u306F\u7C21\u5358\u306A\u554F\u984C\u3067\u3059\u3002"
+  Number: 1
+  Choices:
+  - "\u6B63\u89E3"
+  - "\u4E0D\u6B63\u89E31"
+  - "\u4E0D\u6B63\u89E32"
+  - "\u4E0D\u6B63\u89E33"
