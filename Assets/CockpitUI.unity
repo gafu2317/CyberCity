@@ -1252,7 +1252,7 @@ GameObject:
   - component: {fileID: 313985757}
   - component: {fileID: 313985756}
   m_Layer: 0
-  m_Name: GameClearUI
+  m_Name: GameMessageUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
-public class GameMessageUI : MonoBehaviour
+public class GameClearUI : MonoBehaviour
 {
     [SerializeField] private Image[] letters;      // G, A, M, E, C, L, E, A, R ÇÃImageîzóÒ
     [SerializeField] private float dropDuration = 1f;   // ç~â∫éûä‘
