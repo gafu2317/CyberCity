@@ -1346,7 +1346,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7523d4e7024f3484c93c12f25b8e8c0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  letters:
+  gameClearLetters:
   - {fileID: 1199748611}
   - {fileID: 1026858721}
   - {fileID: 1363884409}
@@ -1356,11 +1356,21 @@ MonoBehaviour:
   - {fileID: 1842932454}
   - {fileID: 524823480}
   - {fileID: 842873900}
+  gameOverLetters:
+  - {fileID: 2057678563}
+  - {fileID: 90990974}
+  - {fileID: 1159285817}
+  - {fileID: 571674716}
+  - {fileID: 477919555}
+  - {fileID: 1962313826}
+  - {fileID: 1288008972}
+  - {fileID: 1489818561}
   dropDuration: 1
   delayBetween: 0.2
   dropHeight: 500
   bounceAmplitude: 5
   bounceSpeed: 2
+  loopBounce: 1
 --- !u!4 &313985757
 Transform:
   m_ObjectHideFlags: 0
@@ -5009,8 +5019,8 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 313985756}
-        m_TargetAssemblyTypeName: GameClearUI, Assembly-CSharp
-        m_MethodName: PlayGAMECLEARAnimation
+        m_TargetAssemblyTypeName: GameResultUI, Assembly-CSharp
+        m_MethodName: PlayGameClear
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -5869,7 +5879,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1644582305
 RectTransform:
   m_ObjectHideFlags: 0
