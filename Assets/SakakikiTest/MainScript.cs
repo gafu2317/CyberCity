@@ -36,12 +36,11 @@ public class MainScript : MonoBehaviour
         }
         if (_resetHoldTime > 3)
         {
+            // コルーチンを停止
+            StopAllCoroutines();
+
             // シーンを再ロードすることによるリセット
             ResetCurrentScene();
-
-            // 自身のコルーチンも再起動
-            StopAllCoroutines();
-            StartCoroutine(MainCoroutine());
 
             _resetHoldTime = 0;
         }
