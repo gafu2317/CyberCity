@@ -16,7 +16,7 @@ public class QuizManager : MonoBehaviour
     public Difficulty QuizDifficulty { get; set; } = Difficulty.Easy;
 
     // 現在のクイズ情報
-    public String Qusetion { get; private set; }
+    public String Question { get; private set; }
     public String[] Choices { get; private set; }
     public int CorrectIndex { get; private set; }
 
@@ -86,7 +86,7 @@ public class QuizManager : MonoBehaviour
             return;
         }
 
-        if (choicesNum < 2 || choicesNum > Choices.Length)
+        if (choicesNum < 2 || choicesNum > 4)
         {
             Debug.LogError("選択肢数が無効です。指定された選択肢数：" + choicesNum);
             return;
@@ -105,7 +105,7 @@ public class QuizManager : MonoBehaviour
         MultiChoicesQuiz selectedQuiz = selectedList[randomIndex];
 
         // クイズ情報の更新
-        Qusetion = selectedQuiz.Qusetion;
+        Question = selectedQuiz.Qusetion;
 
         // 選択肢のシャッフル
         Choices = (string[])selectedQuiz.Choices.Clone();

@@ -36,8 +36,13 @@ public class MainScript : MonoBehaviour
         }
         if (_resetHoldTime > 3)
         {
+            // コルーチンを停止
+            StopAllCoroutines();
+
             // シーンを再ロードすることによるリセット
             ResetCurrentScene();
+
+            _resetHoldTime = 0;
         }
     }
 
@@ -56,11 +61,13 @@ public class MainScript : MonoBehaviour
             {
                 _finalQuizNum = 5;
                 QuizManager.Instance.SetDifficulty(QuizManager.Difficulty.Easy);
+                Debug.Log("イージーモード");
             }
             if (Input.GetKeyDown(KeyCode.N))
             {
                 _finalQuizNum = 7;
                 QuizManager.Instance.SetDifficulty(QuizManager.Difficulty.Normal);
+                Debug.Log("ノーマルモード");
             }
 
             yield return null;
@@ -82,8 +89,29 @@ public class MainScript : MonoBehaviour
             // 次の問題番号に移行
             _quizNum++;
 
-            /* 処理：クイズ出題アニメーション開始 */
-            /* 待機：アニメーション完了 */
+            // 出題する問題を決定しUIにセット
+            // 前半問題
+            if (_quizNum <= _finalQuizNum / 2)
+            {
+                QuizManager.Instance.SetRandomQuiz(_quizNum, 2);
+                _uiController.ChangeTargetPanel(3);
+            }
+            // 後半問題
+            else if (_quizNum < _finalQuizNum)
+            {
+                QuizManager.Instance.SetRandomQuiz(_quizNum, 3);
+                _uiController.ChangeTargetPanel(Random.Range(1, 3)); // 1か2をランダムに選択
+            }
+            // 最終問題
+            else // _quizNum == _finalQuizNum
+            {
+                QuizManager.Instance.SetRandomQuiz(_quizNum, 4);
+                _uiController.ChangeTargetPanel(0);
+            }
+            _uiController.SetQuestionAndChoices(QuizManager.Instance.Question, QuizManager.Instance.Choices);
+
+            // 出題アニメーションの呼び出しと待機
+            yield return StartCoroutine(_uiController.SlideInCoroutine());
 
             /* 処理：カウントダウンアニメーションを開始 */
 
@@ -104,6 +132,9 @@ public class MainScript : MonoBehaviour
 
                 yield return null;
             }
+
+            // 回答選択アニメーションの呼び出しと待機
+            yield return StartCoroutine(_uiController.AnswerSelectCoroutine(_playerAnswerNum));
 
             /* 処理：カウントダウンアニメーションの強制終了 */
 
@@ -131,14 +162,16 @@ public class MainScript : MonoBehaviour
 
         /* -- リザルト演出 -- */
 
-        // _quizNum の値からゲームクリアかどうかを判定
+        // フラグからゲームクリアかどうかを判定
         if (_isCleared)
         {
             /* 処理：ゲームクリアアニメーションを開始 */
+            Debug.Log("ゲームクリア");
         }
         else
         {
             /* 処理：ゲームオーバーアニメーションを開始 */
+            Debug.Log("ゲームオーバー");
         }
 
 
